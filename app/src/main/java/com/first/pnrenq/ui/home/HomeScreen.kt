@@ -20,6 +20,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -41,11 +42,17 @@ fun HomeScreen(
     pnrs: List<PnrInfo>,
     onAddClick: () -> Unit,
     onPnrClick: (String) -> Unit,
+    onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("PNR enq") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("PNR enq") },
+                actions = { TextButton(onClick = onSettingsClick) { Text("Settings") } }
+            )
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(onClick = onAddClick) { Text("Add PNR") }
         }
