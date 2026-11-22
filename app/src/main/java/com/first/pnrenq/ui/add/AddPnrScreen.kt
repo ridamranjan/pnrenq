@@ -1,3 +1,4 @@
+
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.first.pnrenq.ui.add
@@ -40,13 +41,20 @@ fun AddPnrScreen(
     isChecking: Boolean,
     onCheck: (String) -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    errorMessage: String? = null
 ) {
-    var input by rememberSaveable { mutableStateOf("") }
-    var showError by rememberSaveable { mutableStateOf(false) }
+    var input by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    var showError by rememberSaveable {
+        mutableStateOf(false)
+    }
 
     fun submit() {
         if (isChecking) return
+
         if (isValidPnr(input)) {
             showError = false
             onCheck(input)
@@ -59,19 +67,34 @@ fun AddPnrScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Add PNR") },
-                navigationIcon = { TextButton(onClick = onBack, enabled = !isChecking) { Text("Back") } }
+                title = {
+                    Text("Add PNR")
+                },
+                navigationIcon = {
+                    TextButton(
+                        onClick = onBack,
+                        enabled = !isChecking
+                    ) {
+                        Text("Back")
+                    }
+                }
             )
         }
     ) { innerPadding ->
+
         Column(
-            modifier = Modifier.padding(innerPadding).padding(16.dp).fillMaxWidth(),
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
             Text(
                 text = "Enter your 10-digit PNR number.",
                 style = MaterialTheme.typography.bodyLarge
             )
+
             OutlinedTextField(
                 value = input,
                 onValueChange = {
@@ -79,29 +102,63 @@ fun AddPnrScreen(
                     showError = false
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("PNR number") },
+                label = {
+                    Text("PNR number")
+                },
                 singleLine = true,
                 enabled = !isChecking,
                 isError = showError,
                 supportingText = {
-                    Text(if (showError) "Enter a valid 10-digit PNR" else "${input.length}/$PNR_LENGTH")
+                    Text(
+                        if (showError) {
+                            "Enter a valid 10-digit PNR"
+                        } else {
+                            "${input.length}/$PNR_LENGTH"
+                        }
+                    )
                 },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { submit() })
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        submit()
+                    }
+                )
             )
+
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
             Button(
-                onClick = { submit() },
+                onClick = {
+                    submit()
+                },
                 enabled = !isChecking,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (isChecking) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(12.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+
+                    Spacer(
+                        modifier = Modifier.width(12.dp)
+                    )
+
                     Text("Checking...")
                 } else {
                     Text("Check status")
                 }
             }
+
             Text(
                 text = "A new PNR needs an internet connection. (Prototype: results are simulated.)",
                 style = MaterialTheme.typography.bodySmall,
@@ -114,11 +171,23 @@ fun AddPnrScreen(
 @Preview(showBackground = true)
 @Composable
 private fun AddPnrScreenPreview() {
-    PnrenqTheme { AddPnrScreen(isChecking = false, onCheck = {}, onBack = {}) }
+    PnrenqTheme {
+        AddPnrScreen(
+            isChecking = false,
+            onCheck = {},
+            onBack = {}
+        )
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun AddPnrScreenCheckingPreview() {
-    PnrenqTheme { AddPnrScreen(isChecking = true, onCheck = {}, onBack = {}) }
+    PnrenqTheme {
+        AddPnrScreen(
+            isChecking = true,
+            onCheck = {},
+            onBack = {}
+        )
+    }
 }

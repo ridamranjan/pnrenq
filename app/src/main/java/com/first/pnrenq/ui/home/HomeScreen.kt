@@ -36,6 +36,11 @@ import com.first.pnrenq.ui.common.StatusChip
 import com.first.pnrenq.ui.common.formatJourneyDate
 import com.first.pnrenq.ui.common.formatLastChecked
 import com.first.pnrenq.ui.theme.PnrenqTheme
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.Box
+
 
 @Composable
 fun HomeScreen(
@@ -43,7 +48,10 @@ fun HomeScreen(
     onAddClick: () -> Unit,
     onPnrClick: (String) -> Unit,
     onSettingsClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
+    loadError: String? = null,
+    onRetry: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier,
@@ -57,19 +65,81 @@ fun HomeScreen(
             ExtendedFloatingActionButton(onClick = onAddClick) { Text("Add PNR") }
         }
     ) { innerPadding ->
-        if (pnrs.isEmpty()) {
-            EmptyState(modifier = Modifier.padding(innerPadding).fillMaxSize())
-        } else {
-            LazyColumn(
-                modifier = Modifier.padding(innerPadding).fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(pnrs, key = { it.pnrNumber }) { pnr ->
-                    PnrCard(pnr = pnr, onClick = { onPnrClick(pnr.pnrNumber) })
+
+        when {
+            isLoading && pnrs.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            loadError != null && pnrs.isEmpty() -> {
+                Column(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        "Couldn't load saved PNRs",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        loadError,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(onClick = onRetry) {
+                        Text("Retry")
+                    }
+                }
+            }
+
+            pnrs.isEmpty() -> {
+                EmptyState(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize()
+                )
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 8.dp,
+                        bottom = 96.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(pnrs, key = { it.pnrNumber }) { pnr ->
+                        PnrCard(
+                            pnr = pnr,
+                            onClick = {
+                                onPnrClick(pnr.pnrNumber)
+                            }
+                        )
+                    }
                 }
             }
         }
+
     }
 }
 
