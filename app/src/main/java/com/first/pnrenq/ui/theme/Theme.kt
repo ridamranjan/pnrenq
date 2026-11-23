@@ -1,12 +1,18 @@
 
 package com.first.pnrenq.ui.theme
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 private data class ThemeColors(
     val lightPrimary: Color,
@@ -29,7 +35,7 @@ private fun colorsFor(
             lightSecondary = Color(0xFF536889),
             lightContainer = Color(0xFFD9E5FF),
             lightBackground = Color(0xFFF6F8FF),
-            lightSurface = Color(0xFFFFFFFF),
+            lightSurface = Color.White,
             darkPrimary = Color(0xFFADC7FF),
             darkSecondary = Color(0xFFB5C7E6),
             darkContainer = Color(0xFF204783)
@@ -40,7 +46,7 @@ private fun colorsFor(
             lightSecondary = Color(0xFF526D5C),
             lightContainer = Color(0xFFD0F2DD),
             lightBackground = Color(0xFFF5FAF5),
-            lightSurface = Color(0xFFFFFFFF),
+            lightSurface = Color.White,
             darkPrimary = Color(0xFF9BDDB7),
             darkSecondary = Color(0xFFB4D2BD),
             darkContainer = Color(0xFF195B3B)
@@ -51,7 +57,7 @@ private fun colorsFor(
             lightSecondary = Color(0xFF89604B),
             lightContainer = Color(0xFFFFDCC9),
             lightBackground = Color(0xFFFFF8F3),
-            lightSurface = Color(0xFFFFFFFF),
+            lightSurface = Color.White,
             darkPrimary = Color(0xFFFFB68D),
             darkSecondary = Color(0xFFEDBEA6),
             darkContainer = Color(0xFF8D421F)
@@ -62,7 +68,7 @@ private fun colorsFor(
             lightSecondary = Color(0xFF655D7B),
             lightContainer = Color(0xFFE7DDFF),
             lightBackground = Color(0xFFF9F7FF),
-            lightSurface = Color(0xFFFFFFFF),
+            lightSurface = Color.White,
             darkPrimary = Color(0xFFCDBDFF),
             darkSecondary = Color(0xFFC8BFE0),
             darkContainer = Color(0xFF4D388D)
@@ -198,20 +204,61 @@ fun PnrenqTheme(
         AppThemeMode.AMOLED -> true
     }
 
+    val amoled = settings.mode == AppThemeMode.AMOLED
+
     val colors = colorsFor(settings.palette)
 
     val scheme = if (dark) {
         createDarkScheme(
             colors = colors,
-            amoled = settings.mode == AppThemeMode.AMOLED
+            amoled = amoled
         )
     } else {
         createLightScheme(colors)
     }
 
+    val baseColor = scheme.background
+
+    val accentColor = if (dark) {
+        colors.darkContainer
+    } else {
+        colors.lightContainer
+    }
+
+    // The backdrop changes with both palette and display mode.
+    val gradientBrush = Brush.linearGradient(
+        colors = listOf(
+            lerp(
+                baseColor,
+                accentColor,
+                if (amoled) 0.72f else if (dark) 0.58f else 0.78f
+            ),
+            lerp(
+                baseColor,
+                accentColor,
+                if (amoled) 0.28f else 0.22f
+            ),
+            baseColor
+        )
+    )
+
+    val backgroundModifier =
+        if (settings.style == AppThemeStyle.GRADIENT) {
+            Modifier.background(gradientBrush)
+        } else {
+            Modifier.background(baseColor)
+        }
+
     MaterialTheme(
         colorScheme = scheme,
-        typography = Typography,
-        content = content
-    )
+        typography = Typography
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(backgroundModifier)
+        ) {
+            content()
+        }
+    }
 }

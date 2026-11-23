@@ -3,20 +3,28 @@
 
 package com.first.pnrenq.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+
 import com.first.pnrenq.ui.theme.AppThemeMode
 import com.first.pnrenq.ui.theme.AppThemePalette
+import com.first.pnrenq.ui.theme.AppThemeStyle
+import com.first.pnrenq.ui.theme.AppTimeFormat
 import com.first.pnrenq.ui.theme.ThemeSettings
 
 @Composable
@@ -24,46 +32,63 @@ fun SettingsScreen(
     settings: ThemeSettings,
     onModeSelected: (AppThemeMode) -> Unit,
     onPaletteSelected: (AppThemePalette) -> Unit,
+    onStyleSelected: (AppThemeStyle) -> Unit,
+    onTimeFormatSelected: (AppTimeFormat) -> Unit,
     onReset: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
         modifier = modifier,
+
+        // Transparent to reveal the shared theme background.
+        containerColor = Color.Transparent,
+
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Appearance & themes")
+                    Text("Settings")
                 },
+
                 navigationIcon = {
                     TextButton(onClick = onBack) {
-                        Text("Back")
+                        Text("← Back")
                     }
-                }
+                },
+
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                )
             )
         }
-    ) { innerPadding ->
+    ) { padding ->
+
         Column(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
+                .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
+
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+
             Text(
-                text = "Make PNR EXPERT yours",
+                text = "Personalize PNR EXPERT",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = "Choose your preferred appearance. " +
-                        "Changes apply immediately and are saved " +
-                        "for the next time you open the app.",
+                text = "Choose your appearance, background " +
+                        "style and time format. All changes are " +
+                        "saved automatically.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            /* ---------- Appearance ---------- */
 
             SettingsSection(
                 title = "Appearance",
@@ -80,6 +105,8 @@ fun SettingsScreen(
                     )
                 }
             }
+
+            /* ---------- Color palette ---------- */
 
             SettingsSection(
                 title = "Color palette",
@@ -100,41 +127,99 @@ fun SettingsScreen(
                 }
             }
 
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor =
-                        MaterialTheme.colorScheme.primaryContainer
-                ),
-                modifier = Modifier.fillMaxWidth()
+            /* ---------- New style selector ---------- */
+
+            SettingsSection(
+                title = "Background style",
+                subtitle = "Solid or blended theme colors"
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Your current theme",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-
-                    Text(
-                        text = settings.palette.title +
-                                " · " + settings.mode.title,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    Text(
-                        text = "All screens use the selected " +
-                                "colors automatically.",
-                        style = MaterialTheme.typography.bodySmall
+                AppThemeStyle.entries.forEach { style ->
+                    SelectionRow(
+                        title = style.title,
+                        description = style.description,
+                        selected = settings.style == style,
+                        onClick = {
+                            onStyleSelected(style)
+                        },
+                        leadingContent = {
+                            StylePreview(style)
+                        }
                     )
                 }
             }
 
+            /* ---------- Time format ---------- */
+
+            SettingsSection(
+                title = "Time format",
+                subtitle = "Used across the application"
+            ) {
+                AppTimeFormat.entries.forEach { format ->
+                    SelectionRow(
+                        title = format.title,
+                        description = format.description,
+                        selected =
+                            settings.timeFormat == format,
+                        onClick = {
+                            onTimeFormatSelected(format)
+                        }
+                    )
+                }
+            }
+
+            /* ---------- Current selection ---------- */
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+
+                colors = CardDefaults.cardColors(
+                    containerColor =
+                        MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement =
+                        Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Current preferences",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color =
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+
+                    Text(
+                        text = settings.mode.title +
+                                " · " + settings.palette.title +
+                                " · " + settings.style.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color =
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+
+                    Text(
+                        text = "Time: " + settings.timeFormat.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color =
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+
+            /* ---------- Reset everything ---------- */
+
             OutlinedButton(
                 onClick = onReset,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Reset to default theme")
+                Text(
+                    text = "Reset to Default",
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
             Spacer(Modifier.height(12.dp))
@@ -165,7 +250,12 @@ private fun SettingsSection(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(20.dp),
+
+            colors = CardDefaults.cardColors(
+                containerColor =
+                    MaterialTheme.colorScheme.surfaceContainerLow
+            )
         ) {
             Column(content = content)
         }
@@ -189,31 +279,33 @@ private fun SelectionRow(
                     horizontal = 16.dp,
                     vertical = 12.dp
                 ),
+
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (leadingContent != null) {
-                leadingContent()
+
+            leadingContent?.let {
+                it()
                 Spacer(Modifier.width(14.dp))
             }
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+                verticalArrangement =
+                    Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (selected) {
-                        FontWeight.SemiBold
-                    } else {
-                        FontWeight.Normal
-                    }
+                    fontWeight =
+                        if (selected) FontWeight.SemiBold
+                        else FontWeight.Normal
                 )
 
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color =
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -241,9 +333,41 @@ private fun PalettePreview(
         AppThemePalette.MIDNIGHT -> Color(0xFF6750B7)
     }
 
-    Surface(
-        modifier = Modifier.size(36.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = color
-    ) {}
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(color)
+    )
+}
+
+@Composable
+private fun StylePreview(
+    style: AppThemeStyle
+) {
+    val scheme = MaterialTheme.colorScheme
+
+    val modifier = Modifier
+        .size(38.dp)
+        .clip(RoundedCornerShape(12.dp))
+
+    if (style == AppThemeStyle.GRADIENT) {
+        Box(
+            modifier = modifier.background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        scheme.primary,
+                        scheme.primaryContainer,
+                        scheme.tertiary
+                    )
+                )
+            )
+        )
+    } else {
+        Box(
+            modifier = modifier.background(
+                scheme.primaryContainer
+            )
+        )
+    }
 }

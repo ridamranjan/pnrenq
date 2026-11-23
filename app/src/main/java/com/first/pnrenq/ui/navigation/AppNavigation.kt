@@ -7,12 +7,15 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+
 import androidx.lifecycle.viewmodel.compose.viewModel
+
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -23,15 +26,15 @@ import com.first.pnrenq.ui.add.AddPnrScreen
 import com.first.pnrenq.ui.details.DetailsScreen
 import com.first.pnrenq.ui.home.HomeScreen
 import com.first.pnrenq.ui.settings.SettingsScreen
+
 import com.first.pnrenq.ui.state.PnrNavigationEvent
 import com.first.pnrenq.ui.state.PnrViewModel
+
 import com.first.pnrenq.ui.theme.AppThemeMode
 import com.first.pnrenq.ui.theme.AppThemePalette
+import com.first.pnrenq.ui.theme.AppThemeStyle
+import com.first.pnrenq.ui.theme.AppTimeFormat
 import com.first.pnrenq.ui.theme.ThemeSettings
-
-/* =========================================================
-   ROUTES
-========================================================= */
 
 object Routes {
     const val HOME = "home"
@@ -41,20 +44,16 @@ object Routes {
     const val DETAILS_ARG = "pnr"
     const val DETAILS = "details/{$DETAILS_ARG}"
 
-    fun details(pnr: String): String {
-        return "details/$pnr"
-    }
+    fun details(pnr: String): String = "details/$pnr"
 }
-
-/* =========================================================
-   APP NAVIGATION
-========================================================= */
 
 @Composable
 fun AppNavigation(
     themeSettings: ThemeSettings,
     onThemeModeSelected: (AppThemeMode) -> Unit,
     onThemePaletteSelected: (AppThemePalette) -> Unit,
+    onThemeStyleSelected: (AppThemeStyle) -> Unit,
+    onTimeFormatSelected: (AppTimeFormat) -> Unit,
     onThemeReset: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -64,23 +63,16 @@ fun AppNavigation(
 
     val state by pnrViewModel.state.collectAsState()
 
-    /* =====================================================
-       NAVIGATION EVENTS
-    ===================================================== */
-
     LaunchedEffect(navController, pnrViewModel) {
         pnrViewModel.navigationEvents.collect { event ->
 
-            val currentEntry =
-                navController.currentBackStackEntry
-
-            val currentRoute =
-                currentEntry?.destination?.route
+            val entry = navController.currentBackStackEntry
+            val route = entry?.destination?.route
 
             when (event) {
 
                 is PnrNavigationEvent.OpenDetails -> {
-                    if (currentRoute == Routes.ADD) {
+                    if (route == Routes.ADD) {
                         navController.navigate(
                             Routes.details(event.pnr)
                         ) {
@@ -92,12 +84,11 @@ fun AppNavigation(
                 }
 
                 is PnrNavigationEvent.ReturnAfterDelete -> {
-                    val activePnr = currentEntry
-                        ?.arguments
+                    val activePnr = entry?.arguments
                         ?.getString(Routes.DETAILS_ARG)
 
                     if (
-                        currentRoute == Routes.DETAILS &&
+                        route == Routes.DETAILS &&
                         activePnr == event.pnr
                     ) {
                         navController.popBackStack()
@@ -107,112 +98,67 @@ fun AppNavigation(
         }
     }
 
-    /* =====================================================
-       NAV HOST
-    ===================================================== */
-
     NavHost(
         navController = navController,
         startDestination = Routes.HOME,
         modifier = modifier,
 
-        /* ---------- Forward enter ---------- */
-
         enterTransition = {
             fadeIn(
-                animationSpec = tween(
-                    durationMillis = 260,
-                    easing = FastOutSlowInEasing
-                )
+                animationSpec = tween(260)
             ) + slideInHorizontally(
-                initialOffsetX = { width ->
-                    width / 6
-                },
+                initialOffsetX = { it / 6 },
                 animationSpec = tween(
                     durationMillis = 300,
                     easing = FastOutSlowInEasing
                 )
             )
         },
-
-        /* ---------- Forward exit ---------- */
 
         exitTransition = {
             fadeOut(
-                animationSpec = tween(
-                    durationMillis = 200
-                )
+                animationSpec = tween(200)
             ) + slideOutHorizontally(
-                targetOffsetX = { width ->
-                    -width / 12
-                },
-                animationSpec = tween(
-                    durationMillis = 280,
-                    easing = FastOutSlowInEasing
-                )
+                targetOffsetX = { -it / 12 },
+                animationSpec = tween(280)
             )
         },
-
-        /* ---------- Back re-enter ---------- */
 
         popEnterTransition = {
             fadeIn(
-                animationSpec = tween(
-                    durationMillis = 260
-                )
+                animationSpec = tween(260)
             ) + slideInHorizontally(
-                initialOffsetX = { width ->
-                    -width / 8
-                },
-                animationSpec = tween(
-                    durationMillis = 300,
-                    easing = FastOutSlowInEasing
-                )
+                initialOffsetX = { -it / 8 },
+                animationSpec = tween(300)
             )
         },
 
-        /* ---------- Back exit ---------- */
-
         popExitTransition = {
             fadeOut(
-                animationSpec = tween(
-                    durationMillis = 200
-                )
+                animationSpec = tween(200)
             ) + slideOutHorizontally(
-                targetOffsetX = { width ->
-                    width / 6
-                },
-                animationSpec = tween(
-                    durationMillis = 280,
-                    easing = FastOutSlowInEasing
-                )
+                targetOffsetX = { it / 6 },
+                animationSpec = tween(280)
             )
         }
     ) {
 
-        /* =================================================
-           HOME SCREEN
-        ================================================= */
+        /* ---------- Home ---------- */
 
         composable(Routes.HOME) {
 
-            val homeError =
-                state.detailsMessage?.takeIf {
-                    it.startsWith(
-                        "Unable to delete",
-                        ignoreCase = true
-                    )
-                }
+            val homeError = state.detailsMessage?.takeIf {
+                it.startsWith(
+                    "Unable to delete",
+                    ignoreCase = true
+                )
+            }
 
             HomeScreen(
                 pnrs = state.pnrs,
-
                 isLoading = state.isLoading,
-
                 loadError = state.loadError,
-
                 deletingPnrs = state.deletingPnrs,
-
                 homeMessage = homeError,
 
                 onHomeMessageShown = {
@@ -225,38 +171,33 @@ fun AppNavigation(
 
                 onAddClick = {
                     pnrViewModel.clearAddError()
-
                     navController.navigate(Routes.ADD)
                 },
 
                 onPnrClick = { pnr ->
                     pnrViewModel.clearDetailsMessage()
-
                     navController.navigate(
                         Routes.details(pnr)
                     )
+                },
+
+                onDeletePnr = { pnr ->
+                    pnrViewModel.deletePnr(pnr)
                 },
 
                 onSettingsClick = {
                     navController.navigate(
                         Routes.SETTINGS
                     )
-                },
-
-                onDeletePnr = { pnr ->
-                    pnrViewModel.deletePnr(pnr)
                 }
             )
         }
 
-        /* =================================================
-           ADD PNR
-        ================================================= */
+        /* ---------- Add PNR ---------- */
 
         composable(Routes.ADD) {
             AddPnrScreen(
                 isChecking = state.isChecking,
-
                 errorMessage = state.addError,
 
                 onBack = {
@@ -269,13 +210,10 @@ fun AppNavigation(
             )
         }
 
-        /* =================================================
-           PNR DETAILS
-        ================================================= */
+        /* ---------- Details ---------- */
 
         composable(
             route = Routes.DETAILS,
-
             arguments = listOf(
                 navArgument(Routes.DETAILS_ARG) {
                     type = NavType.StringType
@@ -291,17 +229,15 @@ fun AppNavigation(
                 it.pnrNumber == pnrNumber
             }
 
-            val message = if (
-                state.messagePnr == pnrNumber
-            ) {
-                state.detailsMessage
-            } else {
-                null
-            }
+            val message =
+                if (state.messagePnr == pnrNumber) {
+                    state.detailsMessage
+                } else {
+                    null
+                }
 
             DetailsScreen(
                 pnr = currentPnr,
-
                 isLoading = state.isLoading,
 
                 isRefreshing =
@@ -328,9 +264,7 @@ fun AppNavigation(
             )
         }
 
-        /* =================================================
-           THEMES / APPEARANCE
-        ================================================= */
+        /* ---------- Settings ---------- */
 
         composable(Routes.SETTINGS) {
             SettingsScreen(
@@ -339,6 +273,10 @@ fun AppNavigation(
                 onModeSelected = onThemeModeSelected,
 
                 onPaletteSelected = onThemePaletteSelected,
+
+                onStyleSelected = onThemeStyleSelected,
+
+                onTimeFormatSelected = onTimeFormatSelected,
 
                 onReset = onThemeReset,
 

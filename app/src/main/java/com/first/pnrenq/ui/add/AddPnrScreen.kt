@@ -10,11 +10,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -22,9 +25,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import com.first.pnrenq.domain.validation.PNR_LENGTH
 import com.first.pnrenq.domain.validation.isValidPnr
 import com.first.pnrenq.domain.validation.sanitizePnrInput
+
 import com.first.pnrenq.ui.theme.PnrenqTheme
 
 @Composable
@@ -58,13 +63,13 @@ fun AddPnrScreen(
 
     Scaffold(
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
 
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "Add PNR",
+                        text = "Add PNR",
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
@@ -76,15 +81,20 @@ fun AddPnrScreen(
                     ) {
                         Text("← Back")
                     }
-                }
+                },
+
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                )
             )
         }
-    ) { paddingValues ->
+    ) { padding ->
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
 
@@ -121,7 +131,8 @@ fun AddPnrScreen(
             )
 
             Text(
-                text = "Enter your 10-digit PNR number to view the latest railway reservation status.",
+                text = "Enter your 10-digit PNR number to view " +
+                        "the latest railway reservation status.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -142,6 +153,7 @@ fun AddPnrScreen(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+
                     Text(
                         text = "PNR NUMBER",
                         style = MaterialTheme.typography.labelMedium,
@@ -170,10 +182,11 @@ fun AddPnrScreen(
 
                         isError = showValidationError,
 
-                        textStyle = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 2.sp
-                        ),
+                        textStyle =
+                            MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 2.sp
+                            ),
 
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
@@ -189,7 +202,6 @@ fun AddPnrScreen(
                         supportingText = {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-
                                 horizontalArrangement =
                                     Arrangement.SpaceBetween
                             ) {
@@ -208,23 +220,26 @@ fun AddPnrScreen(
                         }
                     )
 
-                    /* ---------- API error ---------- */
+                    /* ---------- Checking error ---------- */
 
                     if (!errorMessage.isNullOrBlank()) {
                         Surface(
-                            color = MaterialTheme.colorScheme.errorContainer,
+                            color =
+                                MaterialTheme.colorScheme.errorContainer,
                             shape = RoundedCornerShape(14.dp)
                         ) {
                             Text(
                                 text = errorMessage,
                                 modifier = Modifier.padding(14.dp),
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.bodyMedium
+                                color =
+                                    MaterialTheme.colorScheme.onErrorContainer,
+                                style =
+                                    MaterialTheme.typography.bodyMedium
                             )
                         }
                     }
 
-                    /* ---------- Submit ---------- */
+                    /* ---------- Submit button ---------- */
 
                     Button(
                         onClick = {
@@ -243,7 +258,8 @@ fun AddPnrScreen(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
+                                color =
+                                    MaterialTheme.colorScheme.onPrimary
                             )
 
                             Spacer(Modifier.width(12.dp))
@@ -283,7 +299,10 @@ fun AddPnrScreen(
                     )
 
                     Text(
-                        text = "Successful PNR checks are saved automatically. You can view saved information offline and refresh only when you choose.",
+                        text = "Successful PNR checks are saved " +
+                                "automatically. You can view saved " +
+                                "information offline and refresh only " +
+                                "when you choose.",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }

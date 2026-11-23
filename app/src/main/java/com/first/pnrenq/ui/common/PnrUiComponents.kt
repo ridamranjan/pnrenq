@@ -11,12 +11,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+
 import com.first.pnrenq.domain.model.StatusCategory
 import com.first.pnrenq.domain.model.statusCategoryOf
+import com.first.pnrenq.ui.theme.AppTimeFormat
+import com.first.pnrenq.ui.theme.LocalPnrTimeFormat
+
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
 import java.util.Locale
 
 private val journeyFormatter =
@@ -31,20 +37,17 @@ private val shortDateFormatter =
         Locale.getDefault()
     )
 
-private val checkedFormatter =
-    DateTimeFormatter.ofPattern(
-        "d MMM, h:mm a",
-        Locale.getDefault()
-    )
+private val amPmParser =
+    DateTimeFormatterBuilder()
+        .parseCaseInsensitive()
+        .appendPattern("h:mm a")
+        .toFormatter(Locale.ENGLISH)
 
-fun formatJourneyDate(date: LocalDate): String =
-    date.format(journeyFormatter)
-
-fun formatLastChecked(epochMillis: Long): String =
-    checkedFormatter.format(
-        Instant.ofEpochMilli(epochMillis)
-            .atZone(ZoneId.systemDefault())
-    )
+private val amPmSecondsParser =
+    DateTimeFormatterBuilder()
+        .parseCaseInsensitive()
+        .appendPattern("h:mm:ss a")
+        .toFormatter(Locale.ENGLISH)
 
 fun availableText(value: String?): String? {
     val result = value?.trim() ?: return null
@@ -58,6 +61,9 @@ fun availableText(value: String?): String? {
     }
 }
 
+fun formatJourneyDate(date: LocalDate): String =
+    date.format(journeyFormatter)
+
 fun formatArrivalDate(value: String?): String? {
     val valid = availableText(value) ?: return null
 
@@ -66,6 +72,85 @@ fun formatArrivalDate(value: String?): String? {
     } catch (_: Exception) {
         valid
     }
+}
+
+/**
+ * Parse valid railway times without changing their
+ * underlying values.
+ *
+ * Supports 20:35, 20:35:00 and 8:35 PM.
+ */
+fun parseClockTime(value: String?): LocalTime? {
+    val raw = availableText(value) ?: return null
+
+    val normalized = raw
+        .trim()
+        .uppercase(Locale.ENGLISH)
+        .replace(
+            Regex("(?<=\\d)(AM|PM)$"),
+            " $1"
+        )
+        .replace(Regex("\\s+"), " ")
+
+    return try {
+        LocalTime.parse(normalized)
+    } catch (_: Exception) {
+        try {
+            LocalTime.parse(normalized, amPmParser)
+        } catch (_: Exception) {
+            try {
+                LocalTime.parse(
+                    normalized,
+                    amPmSecondsParser
+                )
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+}
+
+fun formatClockTime(
+    value: String?,
+    format: AppTimeFormat
+): String? {
+    val raw = availableText(value) ?: return null
+    val parsed = parseClockTime(raw) ?: return raw
+
+    val pattern =
+        if (format == AppTimeFormat.HOUR_12) {
+            "h:mm a"
+        } else {
+            "HH:mm"
+        }
+
+    return parsed.format(
+        DateTimeFormatter.ofPattern(
+            pattern,
+            Locale.ENGLISH
+        )
+    )
+}
+
+fun formatLastChecked(
+    epochMillis: Long,
+    format: AppTimeFormat = AppTimeFormat.HOUR_24
+): String {
+    val pattern =
+        if (format == AppTimeFormat.HOUR_12) {
+            "d MMM, h:mm a"
+        } else {
+            "d MMM, HH:mm"
+        }
+
+    return Instant.ofEpochMilli(epochMillis)
+        .atZone(ZoneId.systemDefault())
+        .format(
+            DateTimeFormatter.ofPattern(
+                pattern,
+                Locale.ENGLISH
+            )
+        )
 }
 
 fun formatJourneyDuration(value: String?): String? {
@@ -81,8 +166,6 @@ fun formatJourneyDuration(value: String?): String? {
 
     return "${hours}h ${minutes}m"
 }
-
-/* ---------- Theme-aware status badge ---------- */
 
 @Composable
 fun StatusChip(
@@ -134,8 +217,6 @@ fun StatusChip(
     }
 }
 
-/* ---------- Reusable departure / arrival timeline ---------- */
-
 @Composable
 fun JourneyTimeline(
     fromStation: String?,
@@ -148,8 +229,18 @@ fun JourneyTimeline(
     modifier: Modifier = Modifier,
     compact: Boolean = false
 ) {
-    val departure = availableText(departureTime)
-    val arrival = availableText(arrivalTime)
+    val timeFormat = LocalPnrTimeFormat.current
+
+    val departure = formatClockTime(
+        departureTime,
+        timeFormat
+    )
+
+    val arrival = formatClockTime(
+        arrivalTime,
+        timeFormat
+    )
+
     val from = availableText(fromStation)
     val to = availableText(toStation)
 
@@ -163,16 +254,17 @@ fun JourneyTimeline(
         }
 
     val arrivalDateText =
-        formatArrivalDate(arrivalDate)?.let { value ->
-            if (compact) {
-                try {
-                    LocalDate.parse(arrivalDate.orEmpty())
-                        .format(shortDateFormatter)
-                } catch (_: Exception) {
-                    value
+        availableText(arrivalDate)?.let { raw ->
+            try {
+                val date = LocalDate.parse(raw)
+
+                if (compact) {
+                    date.format(shortDateFormatter)
+                } else {
+                    date.format(journeyFormatter)
                 }
-            } else {
-                value
+            } catch (_: Exception) {
+                raw
             }
         }
 
@@ -180,6 +272,7 @@ fun JourneyTimeline(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
+
         TimelineStation(
             time = departure,
             station = from,
@@ -190,7 +283,7 @@ fun JourneyTimeline(
         )
 
         Column(
-            modifier = Modifier.weight(0.85f),
+            modifier = Modifier.weight(0.8f),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
@@ -204,7 +297,8 @@ fun JourneyTimeline(
                 Text(
                     text = durationText,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color =
+                        MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             }
@@ -244,13 +338,15 @@ private fun TimelineStation(
         if (time != null) {
             Text(
                 text = time,
-                style = if (compact) {
-                    MaterialTheme.typography.headlineSmall
-                } else {
-                    MaterialTheme.typography.headlineMedium
-                },
+                style =
+                    if (compact) {
+                        MaterialTheme.typography.titleMedium
+                    } else {
+                        MaterialTheme.typography.headlineSmall
+                    },
                 fontWeight = FontWeight.Bold,
-                maxLines = 1
+                textAlign = textAlignment,
+                maxLines = 2
             )
         }
 
@@ -269,7 +365,8 @@ private fun TimelineStation(
             Text(
                 text = date,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color =
+                    MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = textAlignment,
                 maxLines = 1
             )
