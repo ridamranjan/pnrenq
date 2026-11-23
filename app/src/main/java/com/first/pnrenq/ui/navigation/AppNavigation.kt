@@ -29,10 +29,15 @@ import com.first.pnrenq.ui.theme.AppThemeMode
 import com.first.pnrenq.ui.theme.AppThemePalette
 import com.first.pnrenq.ui.theme.ThemeSettings
 
+/* =========================================================
+   ROUTES
+========================================================= */
+
 object Routes {
     const val HOME = "home"
     const val ADD = "add"
     const val SETTINGS = "settings"
+
     const val DETAILS_ARG = "pnr"
     const val DETAILS = "details/{$DETAILS_ARG}"
 
@@ -40,6 +45,10 @@ object Routes {
         return "details/$pnr"
     }
 }
+
+/* =========================================================
+   APP NAVIGATION
+========================================================= */
 
 @Composable
 fun AppNavigation(
@@ -55,8 +64,13 @@ fun AppNavigation(
 
     val state by pnrViewModel.state.collectAsState()
 
+    /* =====================================================
+       NAVIGATION EVENTS
+    ===================================================== */
+
     LaunchedEffect(navController, pnrViewModel) {
         pnrViewModel.navigationEvents.collect { event ->
+
             val currentEntry =
                 navController.currentBackStackEntry
 
@@ -64,6 +78,7 @@ fun AppNavigation(
                 currentEntry?.destination?.route
 
             when (event) {
+
                 is PnrNavigationEvent.OpenDetails -> {
                     if (currentRoute == Routes.ADD) {
                         navController.navigate(
@@ -92,12 +107,16 @@ fun AppNavigation(
         }
     }
 
+    /* =====================================================
+       NAV HOST
+    ===================================================== */
+
     NavHost(
         navController = navController,
         startDestination = Routes.HOME,
         modifier = modifier,
 
-        /* ---------- Forward: enter ---------- */
+        /* ---------- Forward enter ---------- */
 
         enterTransition = {
             fadeIn(
@@ -116,7 +135,7 @@ fun AppNavigation(
             )
         },
 
-        /* ---------- Forward: exit ---------- */
+        /* ---------- Forward exit ---------- */
 
         exitTransition = {
             fadeOut(
@@ -134,7 +153,7 @@ fun AppNavigation(
             )
         },
 
-        /* ---------- Back: re-enter ---------- */
+        /* ---------- Back re-enter ---------- */
 
         popEnterTransition = {
             fadeIn(
@@ -152,7 +171,7 @@ fun AppNavigation(
             )
         },
 
-        /* ---------- Back: exit ---------- */
+        /* ---------- Back exit ---------- */
 
         popExitTransition = {
             fadeOut(
@@ -172,14 +191,33 @@ fun AppNavigation(
     ) {
 
         /* =================================================
-           HOME
+           HOME SCREEN
         ================================================= */
 
         composable(Routes.HOME) {
+
+            val homeError =
+                state.detailsMessage?.takeIf {
+                    it.startsWith(
+                        "Unable to delete",
+                        ignoreCase = true
+                    )
+                }
+
             HomeScreen(
                 pnrs = state.pnrs,
+
                 isLoading = state.isLoading,
+
                 loadError = state.loadError,
+
+                deletingPnrs = state.deletingPnrs,
+
+                homeMessage = homeError,
+
+                onHomeMessageShown = {
+                    pnrViewModel.clearDetailsMessage()
+                },
 
                 onRetry = {
                     pnrViewModel.loadSavedPnrs()
@@ -187,6 +225,7 @@ fun AppNavigation(
 
                 onAddClick = {
                     pnrViewModel.clearAddError()
+
                     navController.navigate(Routes.ADD)
                 },
 
@@ -202,6 +241,10 @@ fun AppNavigation(
                     navController.navigate(
                         Routes.SETTINGS
                     )
+                },
+
+                onDeletePnr = { pnr ->
+                    pnrViewModel.deletePnr(pnr)
                 }
             )
         }
@@ -213,6 +256,7 @@ fun AppNavigation(
         composable(Routes.ADD) {
             AddPnrScreen(
                 isChecking = state.isChecking,
+
                 errorMessage = state.addError,
 
                 onBack = {
@@ -257,6 +301,7 @@ fun AppNavigation(
 
             DetailsScreen(
                 pnr = currentPnr,
+
                 isLoading = state.isLoading,
 
                 isRefreshing =
