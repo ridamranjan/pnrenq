@@ -10,7 +10,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 
 import androidx.compose.ui.Modifier
-
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import androidx.navigation.NavType
@@ -36,36 +35,16 @@ import com.first.pnrenq.ui.theme.AppThemeStyle
 import com.first.pnrenq.ui.theme.AppTimeFormat
 import com.first.pnrenq.ui.theme.ThemeSettings
 
-/* =========================================================
-   APPLICATION ROUTES
-========================================================= */
-
 object Routes {
-
     const val HOME = "home"
-
     const val ADD = "add"
-
     const val SETTINGS = "settings"
 
     const val DETAILS_ARG = "pnr"
-
     const val DETAILS = "details/{$DETAILS_ARG}"
 
-    fun details(pnr: String): String {
-        return "details/$pnr"
-    }
+    fun details(pnr: String): String = "details/$pnr"
 }
-
-/* =========================================================
-   APPLICATION NAVIGATION
-
-   No slide animations.
-   No fade animations.
-   No animation when pressing Back.
-
-   Each destination still uses its own background.
-========================================================= */
 
 @Composable
 fun AppNavigation(
@@ -77,37 +56,25 @@ fun AppNavigation(
     onThemeReset: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-
     val navController = rememberNavController()
 
     val pnrViewModel: PnrViewModel = viewModel()
 
     val state by pnrViewModel.state.collectAsState()
 
-    /* =====================================================
-       EXISTING NAVIGATION EVENTS
-
-       Keep add, delete, and PNR handling intact.
-    ===================================================== */
-
     LaunchedEffect(navController, pnrViewModel) {
-
         pnrViewModel.navigationEvents.collect { event ->
 
             val entry = navController.currentBackStackEntry
-
             val route = entry?.destination?.route
 
             when (event) {
 
                 is PnrNavigationEvent.OpenDetails -> {
-
                     if (route == Routes.ADD) {
-
                         navController.navigate(
                             Routes.details(event.pnr)
                         ) {
-
                             popUpTo(Routes.ADD) {
                                 inclusive = true
                             }
@@ -116,7 +83,6 @@ fun AppNavigation(
                 }
 
                 is PnrNavigationEvent.ReturnAfterDelete -> {
-
                     val activePnr = entry
                         ?.arguments
                         ?.getString(Routes.DETAILS_ARG)
@@ -132,17 +98,12 @@ fun AppNavigation(
         }
     }
 
-    /* =====================================================
-       NAV HOST — TRANSITIONS DISABLED
-    ===================================================== */
-
     NavHost(
         navController = navController,
-
         startDestination = Routes.HOME,
-
         modifier = modifier,
 
+        // Forward navigation: no animations.
         enterTransition = {
             EnterTransition.None
         },
@@ -151,18 +112,26 @@ fun AppNavigation(
             ExitTransition.None
         },
 
+        // Back-button navigation: no animations.
         popEnterTransition = {
             EnterTransition.None
         },
 
         popExitTransition = {
             ExitTransition.None
+        },
+
+        // Predictive-back gestures: no screen animations.
+        predictivePopEnterTransition = {
+            EnterTransition.None
+        },
+
+        predictivePopExitTransition = {
+            ExitTransition.None
         }
     ) {
 
-        /* =================================================
-           HOME SCREEN
-        ================================================= */
+        /* ---------- HOME ---------- */
 
         composable(Routes.HOME) {
 
@@ -170,24 +139,18 @@ fun AppNavigation(
                 screen = PnrScreenType.HOME
             ) {
 
-                val homeError =
-                    state.detailsMessage?.takeIf {
-
-                        it.startsWith(
-                            "Unable to delete",
-                            ignoreCase = true
-                        )
-                    }
+                val homeError = state.detailsMessage?.takeIf {
+                    it.startsWith(
+                        "Unable to delete",
+                        ignoreCase = true
+                    )
+                }
 
                 HomeScreen(
                     pnrs = state.pnrs,
-
                     isLoading = state.isLoading,
-
                     loadError = state.loadError,
-
                     deletingPnrs = state.deletingPnrs,
-
                     homeMessage = homeError,
 
                     onHomeMessageShown = {
@@ -199,16 +162,12 @@ fun AppNavigation(
                     },
 
                     onAddClick = {
-
                         pnrViewModel.clearAddError()
 
-                        navController.navigate(
-                            Routes.ADD
-                        )
+                        navController.navigate(Routes.ADD)
                     },
 
                     onPnrClick = { pnr ->
-
                         pnrViewModel.clearDetailsMessage()
 
                         navController.navigate(
@@ -217,12 +176,10 @@ fun AppNavigation(
                     },
 
                     onDeletePnr = { pnr ->
-
                         pnrViewModel.deletePnr(pnr)
                     },
 
                     onSettingsClick = {
-
                         navController.navigate(
                             Routes.SETTINGS
                         ) {
@@ -233,9 +190,7 @@ fun AppNavigation(
             }
         }
 
-        /* =================================================
-           ADD PNR SCREEN
-        ================================================= */
+        /* ---------- ADD PNR ---------- */
 
         composable(Routes.ADD) {
 
@@ -245,7 +200,6 @@ fun AppNavigation(
 
                 AddPnrScreen(
                     isChecking = state.isChecking,
-
                     errorMessage = state.addError,
 
                     onBack = {
@@ -253,16 +207,13 @@ fun AppNavigation(
                     },
 
                     onCheck = { pnr ->
-
                         pnrViewModel.checkPnr(pnr)
                     }
                 )
             }
         }
 
-        /* =================================================
-           PNR DETAILS SCREEN
-        ================================================= */
+        /* ---------- DETAILS ---------- */
 
         composable(
             route = Routes.DETAILS,
@@ -286,16 +237,16 @@ fun AppNavigation(
                     it.pnrNumber == pnrNumber
                 }
 
-                val message =
-                    if (state.messagePnr == pnrNumber) {
-                        state.detailsMessage
-                    } else {
-                        null
-                    }
+                val message = if (
+                    state.messagePnr == pnrNumber
+                ) {
+                    state.detailsMessage
+                } else {
+                    null
+                }
 
                 DetailsScreen(
                     pnr = currentPnr,
-
                     isLoading = state.isLoading,
 
                     isRefreshing =
@@ -323,9 +274,7 @@ fun AppNavigation(
             }
         }
 
-        /* =================================================
-           SETTINGS SCREEN
-        ================================================= */
+        /* ---------- SETTINGS ---------- */
 
         composable(Routes.SETTINGS) {
 
