@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 import com.first.pnrenq.ui.theme.AppThemeMode
+import com.first.pnrenq.ui.common.PnrBackButton
 import com.first.pnrenq.ui.theme.AppThemePalette
 import com.first.pnrenq.ui.theme.AppThemeStyle
 import com.first.pnrenq.ui.theme.AppTimeFormat
@@ -96,12 +97,9 @@ fun SettingsScreen(
                 },
 
                 navigationIcon = {
-                    TextButton(onClick = onBack) {
-                        Text(
-                            text = "← Back",
-                            color = scheme.onBackground
-                        )
-                    }
+                    PnrBackButton(
+                        onClick = onBack
+                    )
                 },
 
                 colors = TopAppBarDefaults.topAppBarColors(

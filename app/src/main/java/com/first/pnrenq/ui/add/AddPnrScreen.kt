@@ -18,6 +18,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.first.pnrenq.ui.common.PnrBackButton
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -82,15 +83,10 @@ fun AddPnrScreen(
                 },
 
                 navigationIcon = {
-                    TextButton(
+                    PnrBackButton(
                         onClick = onBack,
                         enabled = !isChecking
-                    ) {
-                        Text(
-                            text = "← Back",
-                            color = scheme.onBackground
-                        )
-                    }
+                    )
                 },
 
                 colors = TopAppBarDefaults.topAppBarColors(

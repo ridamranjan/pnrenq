@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 
 import com.first.pnrenq.R
 import com.first.pnrenq.data.mock.MockPnrData
+import com.first.pnrenq.ui.common.PnrBackButton
 import com.first.pnrenq.domain.model.PassengerStatus
 import com.first.pnrenq.domain.model.PnrInfo
 import com.first.pnrenq.ui.common.JourneyTimeline
@@ -82,9 +83,9 @@ fun DetailsScreen(
                     )
                 },
                 navigationIcon = {
-                    TextButton(onClick = onBack) {
-                        Text("← Back")
-                    }
+                    PnrBackButton(
+                        onClick = onBack
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
