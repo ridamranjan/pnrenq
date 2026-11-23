@@ -1,13 +1,8 @@
 
 package com.first.pnrenq.ui.navigation
 
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,7 +37,7 @@ import com.first.pnrenq.ui.theme.AppTimeFormat
 import com.first.pnrenq.ui.theme.ThemeSettings
 
 /* =========================================================
-   ROUTES
+   APPLICATION ROUTES
 ========================================================= */
 
 object Routes {
@@ -57,20 +52,19 @@ object Routes {
 
     const val DETAILS = "details/{$DETAILS_ARG}"
 
-    fun details(
-        pnr: String
-    ): String = "details/$pnr"
+    fun details(pnr: String): String {
+        return "details/$pnr"
+    }
 }
 
 /* =========================================================
    APPLICATION NAVIGATION
 
-   Each destination has its own background.
+   No slide animations.
+   No fade animations.
+   No animation when pressing Back.
 
-   HOME     -> Signature
-   DETAILS  -> Journey
-   ADD      -> Focus
-   SETTINGS -> Ambient
+   Each destination still uses its own background.
 ========================================================= */
 
 @Composable
@@ -84,32 +78,25 @@ fun AppNavigation(
     modifier: Modifier = Modifier
 ) {
 
-    val navController =
-        rememberNavController()
+    val navController = rememberNavController()
 
-    val pnrViewModel: PnrViewModel =
-        viewModel()
+    val pnrViewModel: PnrViewModel = viewModel()
 
     val state by pnrViewModel.state.collectAsState()
 
     /* =====================================================
-       NAVIGATION EVENTS
+       EXISTING NAVIGATION EVENTS
 
-       Preserve existing check/delete behavior.
+       Keep add, delete, and PNR handling intact.
     ===================================================== */
 
-    LaunchedEffect(
-        navController,
-        pnrViewModel
-    ) {
+    LaunchedEffect(navController, pnrViewModel) {
 
         pnrViewModel.navigationEvents.collect { event ->
 
-            val entry =
-                navController.currentBackStackEntry
+            val entry = navController.currentBackStackEntry
 
-            val route =
-                entry?.destination?.route
+            val route = entry?.destination?.route
 
             when (event) {
 
@@ -130,16 +117,14 @@ fun AppNavigation(
 
                 is PnrNavigationEvent.ReturnAfterDelete -> {
 
-                    val activePnr = entry?.arguments
-                        ?.getString(
-                            Routes.DETAILS_ARG
-                        )
+                    val activePnr = entry
+                        ?.arguments
+                        ?.getString(Routes.DETAILS_ARG)
 
                     if (
                         route == Routes.DETAILS &&
                         activePnr == event.pnr
                     ) {
-
                         navController.popBackStack()
                     }
                 }
@@ -148,9 +133,7 @@ fun AppNavigation(
     }
 
     /* =====================================================
-       NAVIGATION HOST
-
-       Existing fade/slide transitions are retained.
+       NAV HOST — TRANSITIONS DISABLED
     ===================================================== */
 
     NavHost(
@@ -160,82 +143,25 @@ fun AppNavigation(
 
         modifier = modifier,
 
-        /* ---------- Forward entrance ---------- */
-
         enterTransition = {
-
-            fadeIn(
-                animationSpec = tween(260)
-            ) +
-
-                    slideInHorizontally(
-                        initialOffsetX = {
-                            it / 6
-                        },
-
-                        animationSpec = tween(
-                            durationMillis = 300,
-                            easing = FastOutSlowInEasing
-                        )
-                    )
+            EnterTransition.None
         },
-
-        /* ---------- Forward exit ---------- */
 
         exitTransition = {
-
-            fadeOut(
-                animationSpec = tween(200)
-            ) +
-
-                    slideOutHorizontally(
-                        targetOffsetX = {
-                            -it / 12
-                        },
-
-                        animationSpec = tween(280)
-                    )
+            ExitTransition.None
         },
-
-        /* ---------- Back entrance ---------- */
 
         popEnterTransition = {
-
-            fadeIn(
-                animationSpec = tween(260)
-            ) +
-
-                    slideInHorizontally(
-                        initialOffsetX = {
-                            -it / 8
-                        },
-
-                        animationSpec = tween(300)
-                    )
+            EnterTransition.None
         },
 
-        /* ---------- Back exit ---------- */
-
         popExitTransition = {
-
-            fadeOut(
-                animationSpec = tween(200)
-            ) +
-
-                    slideOutHorizontally(
-                        targetOffsetX = {
-                            it / 6
-                        },
-
-                        animationSpec = tween(280)
-                    )
+            ExitTransition.None
         }
     ) {
 
         /* =================================================
            HOME SCREEN
-
-           Uses Signature background.
         ================================================= */
 
         composable(Routes.HOME) {
@@ -292,16 +218,16 @@ fun AppNavigation(
 
                     onDeletePnr = { pnr ->
 
-                        pnrViewModel.deletePnr(
-                            pnr
-                        )
+                        pnrViewModel.deletePnr(pnr)
                     },
 
                     onSettingsClick = {
 
                         navController.navigate(
                             Routes.SETTINGS
-                        )
+                        ) {
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
@@ -309,8 +235,6 @@ fun AppNavigation(
 
         /* =================================================
            ADD PNR SCREEN
-
-           Uses Focus background.
         ================================================= */
 
         composable(Routes.ADD) {
@@ -325,15 +249,12 @@ fun AppNavigation(
                     errorMessage = state.addError,
 
                     onBack = {
-
                         navController.popBackStack()
                     },
 
                     onCheck = { pnr ->
 
-                        pnrViewModel.checkPnr(
-                            pnr
-                        )
+                        pnrViewModel.checkPnr(pnr)
                     }
                 )
             }
@@ -341,17 +262,13 @@ fun AppNavigation(
 
         /* =================================================
            PNR DETAILS SCREEN
-
-           Uses Journey background.
         ================================================= */
 
         composable(
             route = Routes.DETAILS,
 
             arguments = listOf(
-                navArgument(
-                    Routes.DETAILS_ARG
-                ) {
+                navArgument(Routes.DETAILS_ARG) {
                     type = NavType.StringType
                 }
             )
@@ -362,21 +279,15 @@ fun AppNavigation(
             ) {
 
                 val pnrNumber = entry.arguments
-                    ?.getString(
-                        Routes.DETAILS_ARG
-                    )
+                    ?.getString(Routes.DETAILS_ARG)
                     .orEmpty()
 
-                val currentPnr =
-                    state.pnrs.firstOrNull {
-
-                        it.pnrNumber == pnrNumber
-                    }
+                val currentPnr = state.pnrs.firstOrNull {
+                    it.pnrNumber == pnrNumber
+                }
 
                 val message =
-                    if (
-                        state.messagePnr == pnrNumber
-                    ) {
+                    if (state.messagePnr == pnrNumber) {
                         state.detailsMessage
                     } else {
                         null
@@ -394,26 +305,18 @@ fun AppNavigation(
                     message = message,
 
                     onMessageShown = {
-
                         pnrViewModel.clearDetailsMessage()
                     },
 
                     onRefresh = {
-
-                        pnrViewModel.refreshPnr(
-                            pnrNumber
-                        )
+                        pnrViewModel.refreshPnr(pnrNumber)
                     },
 
                     onDelete = {
-
-                        pnrViewModel.deletePnr(
-                            pnrNumber
-                        )
+                        pnrViewModel.deletePnr(pnrNumber)
                     },
 
                     onBack = {
-
                         navController.popBackStack()
                     }
                 )
@@ -422,8 +325,6 @@ fun AppNavigation(
 
         /* =================================================
            SETTINGS SCREEN
-
-           Uses Ambient background.
         ================================================= */
 
         composable(Routes.SETTINGS) {
@@ -450,7 +351,6 @@ fun AppNavigation(
                     onReset = onThemeReset,
 
                     onBack = {
-
                         navController.popBackStack()
                     }
                 )
