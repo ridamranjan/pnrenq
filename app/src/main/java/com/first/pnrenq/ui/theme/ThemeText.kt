@@ -3,15 +3,14 @@ package com.first.pnrenq.ui.theme
 
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -22,51 +21,29 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 
-/* =========================================================
-   CONTRAST-SAFE GRADIENT TEXT
-
-   Dark foreground -> subtly darker gradient
-   Light foreground -> subtly lighter gradient
-
-   Never mixes text with an unrelated accent color.
-========================================================= */
-
 private fun safeGradientBrush(
     baseColor: Color
 ): Brush {
-
-    val lightForeground =
-        baseColor.luminance() > 0.5f
-
-    val contrastAnchor = if (lightForeground) {
+    val anchor = if (baseColor.luminance() > 0.5f) {
         Color.White
     } else {
         Color.Black
     }
 
-    val middleColor = lerp(
+    val midpoint = lerp(
         baseColor,
-        contrastAnchor,
-        0.16f
+        anchor,
+        0.13f
     )
 
     return Brush.horizontalGradient(
-        colors = listOf(
+        listOf(
             baseColor,
-            middleColor,
+            midpoint,
             baseColor
         )
     )
 }
-
-/* =========================================================
-   SHARED TEXT COMPONENT
-
-   Gradient mode: subtle high-contrast gradient
-   Simplified mode: exact foreground color
-
-   Preserves labels, fonts, accessibility and theming.
-========================================================= */
 
 @Composable
 fun ThemeText(
@@ -88,85 +65,53 @@ fun ThemeText(
     overflow: TextOverflow = TextOverflow.Clip,
     onTextLayout: ((TextLayoutResult) -> Unit)? = null
 ) {
-
     val gradientEnabled =
         LocalPnrVisualSettings.current.style ==
                 AppThemeStyle.GRADIENT
 
-    /*
-     Foreground priority:
+    val inherited = LocalContentColor.current
 
-     1. Explicit color
-     2. Typography style color
-     3. Current Material surface's content color
-
-     This respects cards, buttons, alerts and app bars.
-    */
-
+    // Explicit foreground wins, followed by the supplied
+    // text style and the current Material surface color.
     val resolvedColor = when {
-
         color != Color.Unspecified -> color
 
         style.color != Color.Unspecified -> style.color
 
-        else -> LocalContentColor.current
+        inherited != Color.Unspecified -> inherited
+
+        else -> MaterialTheme.colorScheme.onBackground
     }
 
-    if (gradientEnabled) {
-
-        val brush = safeGradientBrush(
-            resolvedColor
+    val resolvedStyle = if (gradientEnabled) {
+        style.copy(
+            brush = safeGradientBrush(resolvedColor)
         )
-
-        Text(
-            text = text,
-            modifier = modifier,
-
-            // Brush supplies the foreground paint.
-            color = Color.Unspecified,
-
-            style = style.copy(
-                brush = brush
-            ),
-
-            fontWeight = fontWeight,
-            fontStyle = fontStyle,
-            fontFamily = fontFamily,
-            fontSize = fontSize,
-            letterSpacing = letterSpacing,
-            textAlign = textAlign,
-            lineHeight = lineHeight,
-            textDecoration = textDecoration,
-            maxLines = maxLines,
-            minLines = minLines,
-            softWrap = softWrap,
-            overflow = overflow,
-            onTextLayout = onTextLayout
-        )
-
     } else {
-
-        Text(
-            text = text,
-            modifier = modifier,
-
-            color = resolvedColor,
-
-            style = style,
-
-            fontWeight = fontWeight,
-            fontStyle = fontStyle,
-            fontFamily = fontFamily,
-            fontSize = fontSize,
-            letterSpacing = letterSpacing,
-            textAlign = textAlign,
-            lineHeight = lineHeight,
-            textDecoration = textDecoration,
-            maxLines = maxLines,
-            minLines = minLines,
-            softWrap = softWrap,
-            overflow = overflow,
-            onTextLayout = onTextLayout
-        )
+        style
     }
+
+    Text(
+        text = text,
+        modifier = modifier,
+        color = if (gradientEnabled) {
+            Color.Unspecified
+        } else {
+            resolvedColor
+        },
+        style = resolvedStyle,
+        fontWeight = fontWeight,
+        fontStyle = fontStyle,
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        letterSpacing = letterSpacing,
+        textAlign = textAlign,
+        lineHeight = lineHeight,
+        textDecoration = textDecoration,
+        maxLines = maxLines,
+        minLines = minLines,
+        softWrap = softWrap,
+        overflow = overflow,
+        onTextLayout = onTextLayout
+    )
 }

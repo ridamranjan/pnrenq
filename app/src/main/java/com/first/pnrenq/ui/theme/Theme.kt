@@ -6,6 +6,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -16,10 +17,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 
-/* =========================================================
-   PALETTE DEFINITIONS
-========================================================= */
-
 data class PaletteColors(
     val light: Color,
     val dark: Color
@@ -27,82 +24,65 @@ data class PaletteColors(
 
 fun paletteColors(
     palette: AppThemePalette
-): PaletteColors {
+): PaletteColors = when (palette) {
 
-    return when (palette) {
+    AppThemePalette.OCEAN -> PaletteColors(
+        Color(0xFF2759AD),
+        Color(0xFFB5CFFF)
+    )
 
-        AppThemePalette.OCEAN -> PaletteColors(
-            light = Color(0xFF2759AD),
-            dark = Color(0xFFB5CFFF)
-        )
+    AppThemePalette.FOREST -> PaletteColors(
+        Color(0xFF23754C),
+        Color(0xFFA9E1BD)
+    )
 
-        AppThemePalette.FOREST -> PaletteColors(
-            light = Color(0xFF23754C),
-            dark = Color(0xFFA9E1BD)
-        )
+    AppThemePalette.SUNSET -> PaletteColors(
+        Color(0xFFB44F27),
+        Color(0xFFFFBE98)
+    )
 
-        AppThemePalette.SUNSET -> PaletteColors(
-            light = Color(0xFFB44F27),
-            dark = Color(0xFFFFBE98)
-        )
+    AppThemePalette.MIDNIGHT -> PaletteColors(
+        Color(0xFF5740A3),
+        Color(0xFFD0C3FF)
+    )
 
-        AppThemePalette.MIDNIGHT -> PaletteColors(
-            light = Color(0xFF5740A3),
-            dark = Color(0xFFD0C3FF)
-        )
+    AppThemePalette.ROSE -> PaletteColors(
+        Color(0xFFA7356B),
+        Color(0xFFFFB7D6)
+    )
 
-        AppThemePalette.ROSE -> PaletteColors(
-            light = Color(0xFFA7356B),
-            dark = Color(0xFFFFB7D6)
-        )
+    AppThemePalette.LAGOON -> PaletteColors(
+        Color(0xFF006F78),
+        Color(0xFF8FE6E6)
+    )
 
-        AppThemePalette.LAGOON -> PaletteColors(
-            light = Color(0xFF006F78),
-            dark = Color(0xFF8FE6E6)
-        )
+    AppThemePalette.AMBER -> PaletteColors(
+        Color(0xFF986108),
+        Color(0xFFFFD68A)
+    )
 
-        AppThemePalette.AMBER -> PaletteColors(
-            light = Color(0xFF986108),
-            dark = Color(0xFFFFD68A)
-        )
-
-        AppThemePalette.SLATE -> PaletteColors(
-            light = Color(0xFF365B72),
-            dark = Color(0xFFBDD7E6)
-        )
-    }
+    AppThemePalette.SLATE -> PaletteColors(
+        Color(0xFF365B72),
+        Color(0xFFBDD7E6)
+    )
 }
-
-/* =========================================================
-   APPEARANCE CLASSIFICATION
-========================================================= */
 
 fun isDarkAppearance(
     mode: AppThemeMode,
     systemDark: Boolean
-): Boolean {
+): Boolean = when (mode) {
 
-    return when (mode) {
+    AppThemeMode.SYSTEM -> systemDark
 
-        AppThemeMode.SYSTEM -> systemDark
+    AppThemeMode.LIGHT,
+    AppThemeMode.SOFT_LIGHT,
+    AppThemeMode.HIGH_CONTRAST_LIGHT -> false
 
-        AppThemeMode.LIGHT,
-        AppThemeMode.SOFT_LIGHT,
-        AppThemeMode.HIGH_CONTRAST_LIGHT -> false
-
-        AppThemeMode.DARK,
-        AppThemeMode.AMOLED,
-        AppThemeMode.SOFT_DARK,
-        AppThemeMode.HIGH_CONTRAST_DARK -> true
-    }
+    AppThemeMode.DARK,
+    AppThemeMode.AMOLED,
+    AppThemeMode.SOFT_DARK,
+    AppThemeMode.HIGH_CONTRAST_DARK -> true
 }
-
-/* =========================================================
-   LIGHT COLOR SCHEME
-
-   All normal text is dark on light surfaces.
-   All tinted containers have matching dark text.
-========================================================= */
 
 private fun createLightScheme(
     mode: AppThemeMode,
@@ -151,42 +131,35 @@ private fun createLightScheme(
         Color(0xFF424B58)
     }
 
-    val primaryContainer = lerp(
-        Color.White,
-        primary,
-        0.15f
-    )
-
-    val secondaryContainer = lerp(
-        Color.White,
-        primary,
-        0.10f
-    )
-
-    val tertiaryContainer = lerp(
-        Color.White,
-        primary,
-        0.13f
-    )
-
     return lightColorScheme(
-
         primary = primary,
         onPrimary = Color.White,
 
-        primaryContainer = primaryContainer,
+        primaryContainer = lerp(
+            Color.White,
+            primary,
+            0.15f
+        ),
         onPrimaryContainer = Color(0xFF151D29),
 
         secondary = primary,
         onSecondary = Color.White,
 
-        secondaryContainer = secondaryContainer,
+        secondaryContainer = lerp(
+            Color.White,
+            primary,
+            0.10f
+        ),
         onSecondaryContainer = Color(0xFF1C2633),
 
         tertiary = primary,
         onTertiary = Color.White,
 
-        tertiaryContainer = tertiaryContainer,
+        tertiaryContainer = lerp(
+            Color.White,
+            primary,
+            0.13f
+        ),
         onTertiaryContainer = Color(0xFF1C2633),
 
         background = background,
@@ -200,7 +173,6 @@ private fun createLightScheme(
             primary,
             0.055f
         ),
-
         onSurfaceVariant = secondaryText,
 
         surfaceContainerLowest = surface,
@@ -245,17 +217,11 @@ private fun createLightScheme(
 
         error = Color(0xFFB42318),
         onError = Color.White,
+
         errorContainer = Color(0xFFFFDAD6),
         onErrorContainer = Color(0xFF410002)
     )
 }
-
-/* =========================================================
-   DARK COLOR SCHEME
-
-   Foreground colors remain bright.
-   Container surfaces remain dark even with vivid palettes.
-========================================================= */
 
 private fun createDarkScheme(
     mode: AppThemeMode,
@@ -283,6 +249,7 @@ private fun createDarkScheme(
         else -> Color(0xFF181D25)
     }
 
+    // Every dark appearance gets an explicitly light foreground.
     val foreground = if (highContrast) {
         Color.White
     } else {
@@ -292,47 +259,40 @@ private fun createDarkScheme(
     val secondaryText = if (highContrast) {
         Color(0xFFE3E8F2)
     } else {
-        Color(0xFFCCD3DF)
+        Color(0xFFD4DAE5)
     }
 
     val darkBase = Color(0xFF0D1219)
 
-    val primaryContainer = lerp(
-        darkBase,
-        colors.light,
-        0.29f
-    )
-
-    val secondaryContainer = lerp(
-        darkBase,
-        colors.light,
-        0.22f
-    )
-
-    val tertiaryContainer = lerp(
-        darkBase,
-        colors.light,
-        0.25f
-    )
-
     return darkColorScheme(
-
         primary = colors.dark,
         onPrimary = Color(0xFF101820),
 
-        primaryContainer = primaryContainer,
+        primaryContainer = lerp(
+            darkBase,
+            colors.light,
+            0.29f
+        ),
         onPrimaryContainer = Color(0xFFF7F9FF),
 
         secondary = colors.dark,
         onSecondary = Color(0xFF101820),
 
-        secondaryContainer = secondaryContainer,
+        secondaryContainer = lerp(
+            darkBase,
+            colors.light,
+            0.22f
+        ),
         onSecondaryContainer = Color(0xFFF2F6FF),
 
         tertiary = colors.dark,
         onTertiary = Color(0xFF101820),
 
-        tertiaryContainer = tertiaryContainer,
+        tertiaryContainer = lerp(
+            darkBase,
+            colors.light,
+            0.25f
+        ),
         onTertiaryContainer = Color(0xFFF2F6FF),
 
         background = background,
@@ -391,7 +351,6 @@ private fun createDarkScheme(
         },
 
         outline = Color(0xFFA4ADBB),
-
         outlineVariant = Color(0xFF444B57),
 
         inverseSurface = Color(0xFFE5E9F0),
@@ -408,15 +367,6 @@ private fun createDarkScheme(
     )
 }
 
-/* =========================================================
-   BACKGROUND BRUSH
-
-   Simplified = solid background
-   Gradient   = controlled, soft palette gradient
-
-   Dark gradients stay dark enough for light foreground text.
-========================================================= */
-
 private fun createBackgroundBrush(
     scheme: ColorScheme,
     colors: PaletteColors,
@@ -426,12 +376,9 @@ private fun createBackgroundBrush(
 
     val base = scheme.background
 
-    if (
-        settings.style ==
-        AppThemeStyle.SIMPLIFIED
-    ) {
+    if (settings.style == AppThemeStyle.SIMPLIFIED) {
         return Brush.linearGradient(
-            colors = listOf(base, base)
+            listOf(base, base)
         )
     }
 
@@ -439,28 +386,15 @@ private fun createBackgroundBrush(
 
         val intensity = when (settings.mode) {
             AppThemeMode.AMOLED -> 0.32f
-
             AppThemeMode.HIGH_CONTRAST_DARK -> 0.17f
-
             AppThemeMode.SOFT_DARK -> 0.17f
-
             else -> 0.24f
         }
 
         Brush.linearGradient(
             colors = listOf(
-                lerp(
-                    base,
-                    colors.light,
-                    intensity
-                ),
-
-                lerp(
-                    base,
-                    colors.light,
-                    0.065f
-                ),
-
+                lerp(base, colors.light, intensity),
+                lerp(base, colors.light, 0.065f),
                 base
             )
         )
@@ -479,55 +413,30 @@ private fun createBackgroundBrush(
 
         Brush.linearGradient(
             colors = listOf(
-                lerp(
-                    base,
-                    colors.light,
-                    intensity
-                ),
-
-                lerp(
-                    base,
-                    colors.dark,
-                    0.10f
-                ),
-
+                lerp(base, colors.light, intensity),
+                lerp(base, colors.dark, 0.10f),
                 base
             )
         )
     }
 }
 
-/* =========================================================
-   MAIN APPLICATION THEME
-========================================================= */
-
 @Composable
 fun PnrenqTheme(
     settings: ThemeSettings = ThemeSettings(),
     content: @Composable () -> Unit
 ) {
-
-    val systemDark = isSystemInDarkTheme()
-
     val dark = isDarkAppearance(
         mode = settings.mode,
-        systemDark = systemDark
+        systemDark = isSystemInDarkTheme()
     )
 
-    val colors = paletteColors(
-        settings.palette
-    )
+    val colors = paletteColors(settings.palette)
 
     val scheme = if (dark) {
-        createDarkScheme(
-            mode = settings.mode,
-            colors = colors
-        )
+        createDarkScheme(settings.mode, colors)
     } else {
-        createLightScheme(
-            mode = settings.mode,
-            colors = colors
-        )
+        createLightScheme(settings.mode, colors)
     }
 
     val backgroundBrush = createBackgroundBrush(
@@ -541,11 +450,12 @@ fun PnrenqTheme(
         colorScheme = scheme,
         typography = Typography
     ) {
-
+        // Critical: set the app-wide content color explicitly.
+        // Transparent screen Scaffolds inherit this color.
         CompositionLocalProvider(
-            LocalPnrVisualSettings provides settings
+            LocalPnrVisualSettings provides settings,
+            LocalContentColor provides scheme.onBackground
         ) {
-
             Box(
                 modifier = Modifier
                     .fillMaxSize()
