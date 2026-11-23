@@ -376,24 +376,6 @@ private fun DetailsContent(
                     pnr.lastCheckedAtMillis
                 )
             )
-
-            DetailSection(
-                title = "Last update",
-                subtitle = null
-            ) {
-                DetailRow(
-                    label = "Checked",
-                    value = formatLastChecked(
-                        pnr.lastCheckedAtMillis
-                    )
-                )
-            }
-
-
-            DetailRow(
-                label = "Provider time",
-                value = details.providerTimestamp
-            )
         }
 
         /* ---------- Actions ---------- */
