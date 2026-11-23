@@ -8,14 +8,17 @@ import android.content.Context
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,15 +29,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 import com.first.pnrenq.R
 import com.first.pnrenq.data.mock.MockPnrData
 import com.first.pnrenq.domain.model.PnrInfo
+
 import com.first.pnrenq.ui.common.StatusChip
 import com.first.pnrenq.ui.common.availableText
 import com.first.pnrenq.ui.common.formatClockTime
 import com.first.pnrenq.ui.common.formatLastChecked
 import com.first.pnrenq.ui.common.parseClockTime
+
 import com.first.pnrenq.ui.theme.AppThemeStyle
 import com.first.pnrenq.ui.theme.LocalPnrTimeFormat
 import com.first.pnrenq.ui.theme.LocalPnrVisualSettings
@@ -47,25 +53,36 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val shortDateFormat = DateTimeFormatter.ofPattern(
-    "d MMM",
-    Locale.getDefault()
-)
+/* =========================================================
+   DATE / TIME SORTING
+========================================================= */
+
+private val shortDateFormat =
+    DateTimeFormatter.ofPattern(
+        "d MMM",
+        Locale.getDefault()
+    )
 
 private fun isPastJourney(
     pnr: PnrInfo,
     now: LocalDateTime
 ): Boolean {
+
     val date = pnr.journeyDate
-    val time = parseClockTime(
+
+    val departure = parseClockTime(
         pnr.details.departureTime
     )
 
     return when {
+
         date.isBefore(now.toLocalDate()) -> true
+
         date.isAfter(now.toLocalDate()) -> false
-        time == null -> false
-        else -> time.isBefore(now.toLocalTime())
+
+        departure == null -> false
+
+        else -> departure.isBefore(now.toLocalTime())
     }
 }
 
@@ -73,8 +90,9 @@ private val upcomingOrder =
     compareBy<PnrInfo> {
         it.journeyDate
     }.thenBy {
-        parseClockTime(it.details.departureTime)
-            ?: LocalTime.MAX
+        parseClockTime(
+            it.details.departureTime
+        ) ?: LocalTime.MAX
     }.thenBy {
         it.pnrNumber
     }
@@ -83,11 +101,16 @@ private val pastOrder =
     compareByDescending<PnrInfo> {
         it.journeyDate
     }.thenByDescending {
-        parseClockTime(it.details.departureTime)
-            ?: LocalTime.MIN
+        parseClockTime(
+            it.details.departureTime
+        ) ?: LocalTime.MIN
     }.thenBy {
         it.pnrNumber
     }
+
+/* =========================================================
+   HOME SCREEN
+========================================================= */
 
 @Composable
 fun HomeScreen(
@@ -104,7 +127,9 @@ fun HomeScreen(
     homeMessage: String? = null,
     onHomeMessageShown: () -> Unit = {}
 ) {
+
     val scheme = MaterialTheme.colorScheme
+
     val snackbarHostState = remember {
         SnackbarHostState()
     }
@@ -114,28 +139,39 @@ fun HomeScreen(
     }
 
     LaunchedEffect(homeMessage) {
+
         if (homeMessage != null) {
             onHomeMessageShown()
-            snackbarHostState.showSnackbar(homeMessage)
+
+            snackbarHostState.showSnackbar(
+                homeMessage
+            )
         }
     }
 
     val now = LocalDateTime.now()
 
     val upcoming = pnrs
-        .filterNot { isPastJourney(it, now) }
+        .filterNot {
+            isPastJourney(it, now)
+        }
         .sortedWith(upcomingOrder)
 
     val past = pnrs
-        .filter { isPastJourney(it, now) }
+        .filter {
+            isPastJourney(it, now)
+        }
         .sortedWith(pastOrder)
 
     Scaffold(
         modifier = modifier,
+
         containerColor = Color.Transparent,
 
+        /* ---------- Compact safe header ---------- */
+
         topBar = {
-            HomeHeader(
+            CompactHomeHeader(
                 onSettingsClick = onSettingsClick
             )
         },
@@ -144,28 +180,43 @@ fun HomeScreen(
             SnackbarHost(snackbarHostState)
         },
 
+        /* ---------- Add PNR button ---------- */
+
         floatingActionButton = {
+
             if (pnrs.isNotEmpty()) {
+
                 ExtendedFloatingActionButton(
                     onClick = onAddClick,
-                    shape = RoundedCornerShape(19.dp),
-                    containerColor = scheme.primaryContainer,
-                    contentColor = scheme.onPrimaryContainer
+
+                    shape = RoundedCornerShape(16.dp),
+
+                    containerColor =
+                        scheme.primaryContainer,
+
+                    contentColor =
+                        scheme.onPrimaryContainer
                 ) {
+
                     Icon(
                         painter = painterResource(
                             R.drawable.ic_pnr_add
                         ),
+
                         contentDescription = null,
+
                         tint = scheme.onPrimaryContainer,
-                        modifier = Modifier.size(22.dp)
+
+                        modifier = Modifier.size(20.dp)
                     )
 
-                    Spacer(Modifier.width(9.dp))
+                    Spacer(Modifier.width(8.dp))
 
                     Text(
                         text = "Add PNR",
+
                         color = scheme.onPrimaryContainer,
+
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -174,11 +225,14 @@ fun HomeScreen(
     ) { padding ->
 
         when {
+
             isLoading && pnrs.isEmpty() -> {
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
+
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -186,9 +240,11 @@ fun HomeScreen(
             }
 
             loadError != null && pnrs.isEmpty() -> {
+
                 HomeErrorState(
                     message = loadError,
                     onRetry = onRetry,
+
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
@@ -196,8 +252,10 @@ fun HomeScreen(
             }
 
             pnrs.isEmpty() -> {
+
                 HomeEmptyState(
                     onAddClick = onAddClick,
+
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
@@ -205,21 +263,31 @@ fun HomeScreen(
             }
 
             else -> {
+
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
 
                     contentPadding = PaddingValues(
-                        horizontal = 16.dp,
-                        vertical = 12.dp
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 6.dp,
+                        bottom = 110.dp
                     ),
 
                     verticalArrangement =
                         Arrangement.spacedBy(10.dp)
                 ) {
+
+                    /* ---------- Upcoming journeys ---------- */
+
                     if (upcoming.isNotEmpty()) {
-                        item(key = "upcoming_title") {
+
+                        item(
+                            key = "upcoming_heading"
+                        ) {
+
                             SectionHeading(
                                 title = "Upcoming journeys",
                                 count = upcoming.size
@@ -228,35 +296,65 @@ fun HomeScreen(
 
                         items(
                             items = upcoming,
-                            key = { it.pnrNumber }
+                            key = {
+                                it.pnrNumber
+                            }
                         ) { pnr ->
+
                             HomePnrCard(
                                 pnr = pnr,
+
                                 isDeleting =
                                     pnr.pnrNumber in deletingPnrs,
+
                                 onClick = {
-                                    onPnrClick(pnr.pnrNumber)
+                                    if (
+                                        pnr.pnrNumber !in deletingPnrs
+                                    ) {
+                                        onPnrClick(
+                                            pnr.pnrNumber
+                                        )
+                                    }
                                 },
+
                                 onDeleteClick = {
-                                    pnrToDelete = pnr.pnrNumber
+                                    pnrToDelete =
+                                        pnr.pnrNumber
                                 },
+
                                 modifier = Modifier.animateItem(
-                                    fadeInSpec = tween(220),
+                                    fadeInSpec = tween(
+                                        durationMillis = 220
+                                    ),
+
                                     placementSpec = spring(
                                         dampingRatio =
                                             Spring.DampingRatioNoBouncy,
+
                                         stiffness =
                                             Spring.StiffnessMediumLow
                                     ),
-                                    fadeOutSpec = tween(180)
+
+                                    fadeOutSpec = tween(
+                                        durationMillis = 180
+                                    )
                                 )
                             )
                         }
                     }
 
+                    /* ---------- Past journeys ---------- */
+
                     if (past.isNotEmpty()) {
-                        item(key = "past_title") {
-                            Spacer(Modifier.height(8.dp))
+
+                        item(
+                            key = "past_heading"
+                        ) {
+
+                            Spacer(
+                                Modifier.height(8.dp)
+                            )
+
                             SectionHeading(
                                 title = "Past journeys",
                                 count = past.size
@@ -265,74 +363,115 @@ fun HomeScreen(
 
                         items(
                             items = past,
-                            key = { it.pnrNumber }
+                            key = {
+                                it.pnrNumber
+                            }
                         ) { pnr ->
+
                             HomePnrCard(
                                 pnr = pnr,
+
                                 isDeleting =
                                     pnr.pnrNumber in deletingPnrs,
+
                                 onClick = {
-                                    onPnrClick(pnr.pnrNumber)
+                                    if (
+                                        pnr.pnrNumber !in deletingPnrs
+                                    ) {
+                                        onPnrClick(
+                                            pnr.pnrNumber
+                                        )
+                                    }
                                 },
+
                                 onDeleteClick = {
-                                    pnrToDelete = pnr.pnrNumber
+                                    pnrToDelete =
+                                        pnr.pnrNumber
                                 },
+
                                 modifier = Modifier.animateItem(
-                                    fadeInSpec = tween(220),
+                                    fadeInSpec = tween(
+                                        durationMillis = 220
+                                    ),
+
                                     placementSpec = spring(
                                         dampingRatio =
                                             Spring.DampingRatioNoBouncy,
+
                                         stiffness =
                                             Spring.StiffnessMediumLow
                                     ),
-                                    fadeOutSpec = tween(180)
+
+                                    fadeOutSpec = tween(
+                                        durationMillis = 180
+                                    )
                                 )
                             )
                         }
-                    }
-
-                    item(key = "bottom_space") {
-                        Spacer(Modifier.height(95.dp))
                     }
                 }
             }
         }
     }
 
+    /* =====================================================
+       DELETE CONFIRMATION
+    ===================================================== */
+
     pnrToDelete?.let { selectedPnr ->
 
-        val deleting = selectedPnr in deletingPnrs
+        val isDeleting =
+            selectedPnr in deletingPnrs
 
         AlertDialog(
             onDismissRequest = {
-                if (!deleting) pnrToDelete = null
+
+                if (!isDeleting) {
+                    pnrToDelete = null
+                }
             },
+
             title = {
-                Text("Remove saved PNR?")
-            },
-            text = {
                 Text(
-                    "PNR $selectedPnr and its saved journey " +
-                            "will be removed from this device."
+                    text = "Remove saved PNR?"
                 )
             },
+
+            text = {
+                Text(
+                    text = "PNR $selectedPnr and its saved " +
+                            "journey details will be removed " +
+                            "from this device."
+                )
+            },
+
             confirmButton = {
+
                 TextButton(
-                    enabled = !deleting,
+                    enabled = !isDeleting,
+
                     onClick = {
                         pnrToDelete = null
-                        onDeletePnr(selectedPnr)
+
+                        onDeletePnr(
+                            selectedPnr
+                        )
                     }
                 ) {
+
                     Text(
-                        "Delete",
+                        text = "Delete",
+
                         color = scheme.error
                     )
                 }
             },
+
             dismissButton = {
+
                 TextButton(
-                    enabled = !deleting,
+                    enabled = !isDeleting,
+
                     onClick = {
                         pnrToDelete = null
                     }
@@ -345,14 +484,23 @@ fun HomeScreen(
 }
 
 /* =========================================================
-   NEW HEADER — BRAND CARD + SETTINGS CARD
+   SMALL HOME HEADER
+
+   Critical fix:
+   statusBarsPadding() keeps the custom header below
+   Android's status bar and camera cutout.
+
+   Old cards: 66dp
+   New cards: 48dp
 ========================================================= */
 
 @Composable
-private fun HomeHeader(
+private fun CompactHomeHeader(
     onSettingsClick: () -> Unit
 ) {
+
     val scheme = MaterialTheme.colorScheme
+
     val gradient =
         LocalPnrVisualSettings.current.style ==
                 AppThemeStyle.GRADIENT
@@ -360,108 +508,189 @@ private fun HomeHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+
+            // Prevent edge-to-edge status-bar overlap.
+            .statusBarsPadding()
+
             .padding(
-                horizontal = 16.dp,
-                vertical = 10.dp
+                start = 16.dp,
+                end = 16.dp,
+                top = 5.dp,
+                bottom = 5.dp
             ),
 
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement =
+            Arrangement.spacedBy(10.dp),
+
+        verticalAlignment =
+            Alignment.CenterVertically
     ) {
+
+        /* ---------- Compact PNR brand card ---------- */
+
         Surface(
             modifier = Modifier
                 .weight(1f)
-                .height(66.dp),
+                .height(48.dp),
 
-            shape = RoundedCornerShape(21.dp),
+            shape = RoundedCornerShape(15.dp),
 
             color = scheme.primaryContainer.copy(
-                alpha = if (gradient) 0.93f else 1f
+                alpha = if (gradient) {
+                    0.96f
+                } else {
+                    1f
+                }
             ),
+
+            contentColor =
+                scheme.onPrimaryContainer,
 
             border = BorderStroke(
                 1.dp,
-                scheme.primary.copy(alpha = 0.22f)
+                scheme.primary.copy(
+                    alpha = 0.20f
+                )
             )
         ) {
+
             Column(
-                modifier = Modifier.padding(
-                    horizontal = 18.dp,
-                    vertical = 9.dp
-                ),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        horizontal = 13.dp,
+                        vertical = 4.dp
+                    ),
 
                 verticalArrangement =
                     Arrangement.Center
             ) {
+
                 Text(
                     text = "PNR EXPERT",
-                    style = MaterialTheme.typography.titleLarge,
+
+                    style =
+                        MaterialTheme.typography.titleMedium,
+
+                    fontSize = 16.sp,
+
                     fontWeight = FontWeight.Bold,
-                    color = scheme.onPrimaryContainer
+
+                    color =
+                        scheme.onPrimaryContainer,
+
+                    maxLines = 1,
+
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Text(
-                    text = "Your saved journeys",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onPrimaryContainer
-                        .copy(alpha = 0.78f)
+                    text = "Saved journeys",
+
+                    style =
+                        MaterialTheme.typography.labelSmall,
+
+                    fontSize = 10.sp,
+
+                    lineHeight = 12.sp,
+
+                    color = scheme.onPrimaryContainer,
+
+                    maxLines = 1,
+
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
 
+        /* ---------- Compact settings card ---------- */
+
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.size(48.dp),
+
+            shape = RoundedCornerShape(15.dp),
 
             color = scheme.secondaryContainer,
 
+            contentColor =
+                scheme.onSecondaryContainer,
+
             border = BorderStroke(
                 1.dp,
-                scheme.secondary.copy(alpha = 0.22f)
+                scheme.secondary.copy(
+                    alpha = 0.20f
+                )
             )
         ) {
+
             IconButton(
                 onClick = onSettingsClick,
-                modifier = Modifier.size(66.dp)
+
+                modifier = Modifier.fillMaxSize()
             ) {
+
                 Icon(
                     painter = painterResource(
                         R.drawable.ic_pnr_settings
                     ),
+
                     contentDescription = "Settings",
-                    tint = scheme.onSecondaryContainer,
-                    modifier = Modifier.size(25.dp)
+
+                    tint =
+                        scheme.onSecondaryContainer,
+
+                    modifier = Modifier.size(21.dp)
                 )
             }
         }
     }
 }
 
+/* =========================================================
+   SECTION HEADING
+========================================================= */
+
 @Composable
 private fun SectionHeading(
     title: String,
     count: Int
 ) {
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                top = 5.dp,
+                top = 6.dp,
                 bottom = 3.dp
             ),
 
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement =
+            Arrangement.SpaceBetween,
+
+        verticalAlignment =
+            Alignment.CenterVertically
     ) {
+
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+
+            style =
+                MaterialTheme.typography.titleMedium,
+
+            fontWeight = FontWeight.Bold,
+
+            color =
+                MaterialTheme.colorScheme.onBackground
         )
 
         Text(
             text = count.toString(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+
+            style =
+                MaterialTheme.typography.labelMedium,
+
+            color =
+                MaterialTheme.colorScheme.onBackground
         )
     }
 }
@@ -478,9 +707,13 @@ private fun HomePnrCard(
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+
     val context = LocalContext.current
+
     val scheme = MaterialTheme.colorScheme
-    val timeFormat = LocalPnrTimeFormat.current
+
+    val timeFormat =
+        LocalPnrTimeFormat.current
 
     val gradient =
         LocalPnrVisualSettings.current.style ==
@@ -488,81 +721,123 @@ private fun HomePnrCard(
 
     val details = pnr.details
 
-    val departure = listOfNotNull(
-        pnr.journeyDate.format(shortDateFormat),
+    /* ---------- Departure ---------- */
+
+    val departureText = listOfNotNull(
+        pnr.journeyDate.format(
+            shortDateFormat
+        ),
+
         formatClockTime(
             details.departureTime,
             timeFormat
         )
     ).joinToString(" · ")
 
-    val arrivalDate = availableText(
-        details.arrivalDate
-    )?.let {
-        try {
-            LocalDate.parse(it).format(shortDateFormat)
-        } catch (_: Exception) {
-            null
-        }
-    }
+    /* ---------- Arrival ---------- */
 
-    val arrival = listOfNotNull(
+    val arrivalDate =
+        availableText(
+            details.arrivalDate
+        )?.let {
+
+            try {
+                LocalDate.parse(it)
+                    .format(shortDateFormat)
+
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+    val arrivalText = listOfNotNull(
         arrivalDate,
+
         formatClockTime(
             details.arrivalTime,
             timeFormat
         )
     ).joinToString(" · ")
 
+    val trainTitle = listOfNotNull(
+        availableText(pnr.trainNumber),
+        availableText(pnr.trainName)
+    ).joinToString(" · ")
+
     Card(
         onClick = onClick,
-        enabled = !isDeleting,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(19.dp),
 
-        colors = CardDefaults.cardColors(
-            containerColor =
-                scheme.surfaceContainerLow.copy(
-                    alpha = if (gradient) 0.96f else 1f
-                )
-        ),
+        enabled = !isDeleting,
+
+        modifier =
+            modifier.fillMaxWidth(),
+
+        shape =
+            RoundedCornerShape(18.dp),
+
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    scheme.surfaceContainerLow.copy(
+                        alpha = if (gradient) {
+                            0.97f
+                        } else {
+                            1f
+                        }
+                    ),
+
+                contentColor =
+                    scheme.onSurface
+            ),
 
         border = BorderStroke(
             1.dp,
             scheme.outlineVariant
         )
     ) {
+
         Column(
             modifier = Modifier.padding(
                 horizontal = 14.dp,
                 vertical = 12.dp
             ),
 
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(9.dp)
         ) {
 
-            /* ---------- Train + actions ---------- */
+            /* ---------- Train and action icons ---------- */
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 Text(
-                    text = listOfNotNull(
-                        availableText(pnr.trainNumber),
-                        availableText(pnr.trainName)
-                    ).joinToString(" · "),
+                    text = trainTitle,
 
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelLarge,
+                    modifier =
+                        Modifier.weight(1f),
+
+                    style =
+                        MaterialTheme.typography.labelLarge,
+
                     fontWeight = FontWeight.Bold,
+
+                    color = scheme.onSurface,
+
                     maxLines = 1,
+
                     overflow = TextOverflow.Ellipsis
                 )
 
+                /* ---------- Copy ---------- */
+
                 IconButton(
                     onClick = {
+
                         val clipboard =
                             context.getSystemService(
                                 Context.CLIPBOARD_SERVICE
@@ -577,92 +852,139 @@ private fun HomePnrCard(
                     },
 
                     enabled = !isDeleting,
+
                     modifier = Modifier.size(40.dp)
                 ) {
+
                     Icon(
                         painter = painterResource(
                             R.drawable.ic_pnr_copy
                         ),
+
                         contentDescription = "Copy PNR",
+
                         tint = scheme.primary,
+
                         modifier = Modifier.size(19.dp)
                     )
                 }
 
+                /* ---------- Delete ---------- */
+
                 IconButton(
                     onClick = onDeleteClick,
+
                     enabled = !isDeleting,
+
                     modifier = Modifier.size(40.dp)
                 ) {
+
                     if (isDeleting) {
+
                         CircularProgressIndicator(
                             modifier = Modifier.size(17.dp),
                             strokeWidth = 2.dp
                         )
+
                     } else {
+
                         Icon(
                             painter = painterResource(
                                 R.drawable.ic_pnr_delete
                             ),
+
                             contentDescription = "Delete PNR",
+
                             tint = scheme.error,
+
                             modifier = Modifier.size(19.dp)
                         )
                     }
                 }
             }
 
-            /* ---------- Stations ---------- */
+            /* ---------- Source / destination ---------- */
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 StationLabel(
                     code = pnr.fromStation,
-                    dateAndTime = departure,
+
+                    dateAndTime =
+                        departureText,
+
                     alignEnd = false,
-                    modifier = Modifier.weight(1f)
+
+                    modifier =
+                        Modifier.weight(1f)
                 )
 
                 Text(
                     text = "→",
+
                     modifier = Modifier.padding(
                         horizontal = 9.dp
                     ),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = scheme.primary
+
+                    style =
+                        MaterialTheme.typography.titleLarge,
+
+                    color =
+                        scheme.onSurface
                 )
 
                 StationLabel(
                     code = pnr.toStation,
-                    dateAndTime = arrival,
+
+                    dateAndTime =
+                        arrivalText,
+
                     alignEnd = true,
-                    modifier = Modifier.weight(1f)
+
+                    modifier =
+                        Modifier.weight(1f)
                 )
             }
 
             HorizontalDivider(
-                color = scheme.outlineVariant
+                color =
+                    scheme.outlineVariant
             )
 
-            /* ---------- PNR and status ---------- */
+            /* ---------- PNR / last check ---------- */
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 Column(
                     modifier = Modifier.weight(1f),
+
                     verticalArrangement =
                         Arrangement.spacedBy(3.dp)
                 ) {
+
                     Text(
                         text = "PNR ${pnr.pnrNumber}",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
+
+                        style =
+                            MaterialTheme.typography.labelLarge,
+
+                        fontWeight = FontWeight.Bold,
+
+                        color = scheme.onSurface,
+
+                        maxLines = 1,
+
+                        overflow = TextOverflow.Ellipsis
                     )
 
                     Text(
@@ -672,21 +994,39 @@ private fun HomePnrCard(
                                 timeFormat
                             )
                         }",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onSurfaceVariant,
+
+                        style =
+                            MaterialTheme.typography.labelSmall,
+
+                        color =
+                            scheme.onSurfaceVariant,
+
                         maxLines = 1,
+
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                availableText(pnr.currentStatus)?.let {
-                    Spacer(Modifier.width(8.dp))
-                    StatusChip(status = it)
+                availableText(
+                    pnr.currentStatus
+                )?.let { status ->
+
+                    Spacer(
+                        Modifier.width(8.dp)
+                    )
+
+                    StatusChip(
+                        status = status
+                    )
                 }
             }
         }
     }
 }
+
+/* =========================================================
+   STATION LABEL
+========================================================= */
 
 @Composable
 private fun StationLabel(
@@ -695,6 +1035,9 @@ private fun StationLabel(
     alignEnd: Boolean,
     modifier: Modifier = Modifier
 ) {
+
+    val scheme = MaterialTheme.colorScheme
+
     val alignment = if (alignEnd) {
         Alignment.End
     } else {
@@ -709,83 +1052,143 @@ private fun StationLabel(
 
     Column(
         modifier = modifier,
+
         horizontalAlignment = alignment,
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+
+        verticalArrangement =
+            Arrangement.spacedBy(3.dp)
     ) {
+
         Text(
             text = code,
-            style = MaterialTheme.typography.titleLarge,
+
+            style =
+                MaterialTheme.typography.titleLarge,
+
             fontWeight = FontWeight.Bold,
+
+            color =
+                scheme.onSurface,
+
             maxLines = 1,
+
             overflow = TextOverflow.Ellipsis
         )
 
         if (dateAndTime.isNotBlank()) {
+
             Text(
                 text = dateAndTime,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+
+                style =
+                    MaterialTheme.typography.bodySmall,
+
+                color =
+                    scheme.onSurfaceVariant,
+
                 textAlign = textAlignment,
+
                 maxLines = 2
             )
         }
     }
 }
 
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
 @Composable
 private fun HomeEmptyState(
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+
+    val scheme = MaterialTheme.colorScheme
+
     Column(
         modifier = modifier.padding(28.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+
+        verticalArrangement =
+            Arrangement.Center,
+
+        horizontalAlignment =
+            Alignment.CenterHorizontally
     ) {
 
         Text(
             text = "🚆",
-            style = MaterialTheme.typography.headlineLarge
+
+            style =
+                MaterialTheme.typography.headlineLarge
         )
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(
+            Modifier.height(18.dp)
+        )
 
         Text(
             text = "Your journeys start here",
-            style = MaterialTheme.typography.headlineSmall,
+
+            style =
+                MaterialTheme.typography.headlineSmall,
+
+            color = scheme.onBackground,
+
             textAlign = TextAlign.Center
         )
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(
+            Modifier.height(10.dp)
+        )
 
         Text(
-            text = "Add a PNR to save your journey and " +
-                    "check its reservation status.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = "Add a PNR to save your journey " +
+                    "and check its reservation status.",
+
+            style =
+                MaterialTheme.typography.bodyMedium,
+
+            color = scheme.onBackground,
+
             textAlign = TextAlign.Center
         )
 
-        Spacer(Modifier.height(22.dp))
+        Spacer(
+            Modifier.height(22.dp)
+        )
 
         Button(
             onClick = onAddClick,
-            modifier = Modifier.fillMaxWidth()
+
+            modifier =
+                Modifier.fillMaxWidth()
         ) {
+
             Icon(
                 painter = painterResource(
                     R.drawable.ic_pnr_add
                 ),
+
                 contentDescription = null,
+
                 modifier = Modifier.size(20.dp)
             )
 
-            Spacer(Modifier.width(9.dp))
+            Spacer(
+                Modifier.width(9.dp)
+            )
 
-            Text("Add your first PNR")
+            Text(
+                text = "Add your first PNR"
+            )
         }
     }
 }
+
+/* =========================================================
+   ERROR STATE
+========================================================= */
 
 @Composable
 private fun HomeErrorState(
@@ -793,37 +1196,68 @@ private fun HomeErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+
+    val scheme = MaterialTheme.colorScheme
+
     Column(
         modifier = modifier.padding(28.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+
+        verticalArrangement =
+            Arrangement.Center,
+
+        horizontalAlignment =
+            Alignment.CenterHorizontally
     ) {
+
         Text(
             text = "Couldn't load saved PNRs",
-            style = MaterialTheme.typography.titleLarge,
+
+            style =
+                MaterialTheme.typography.titleLarge,
+
+            color = scheme.onBackground,
+
             textAlign = TextAlign.Center
         )
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(
+            Modifier.height(10.dp)
+        )
 
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyMedium,
+
+            style =
+                MaterialTheme.typography.bodyMedium,
+
+            color = scheme.onBackground,
+
             textAlign = TextAlign.Center
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(
+            Modifier.height(20.dp)
+        )
 
-        Button(onClick = onRetry) {
+        Button(
+            onClick = onRetry
+        ) {
+
             Text("Try again")
         }
     }
 }
 
+/* =========================================================
+   PREVIEW
+========================================================= */
+
 @Preview(showBackground = true)
 @Composable
 private fun HomeScreenPreview() {
+
     PnrenqTheme {
+
         HomeScreen(
             pnrs = MockPnrData.sample(),
             onAddClick = {},
