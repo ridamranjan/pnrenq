@@ -16,6 +16,7 @@ import com.first.pnrenq.domain.model.StatusCategory
 import com.first.pnrenq.domain.model.statusCategoryOf
 import com.first.pnrenq.ui.theme.AppTimeFormat
 import com.first.pnrenq.ui.theme.LocalPnrTimeFormat
+import com.first.pnrenq.ui.theme.ThemeText as Text
 
 import java.time.Instant
 import java.time.LocalDate
@@ -25,35 +26,31 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
 import java.util.Locale
 
-private val journeyFormatter =
-    DateTimeFormatter.ofPattern(
-        "d MMM yyyy",
-        Locale.getDefault()
-    )
+private val longDateFormatter = DateTimeFormatter.ofPattern(
+    "d MMM yyyy",
+    Locale.getDefault()
+)
 
-private val shortDateFormatter =
-    DateTimeFormatter.ofPattern(
-        "d MMM",
-        Locale.getDefault()
-    )
+private val shortDateFormatter = DateTimeFormatter.ofPattern(
+    "d MMM",
+    Locale.getDefault()
+)
 
-private val amPmParser =
-    DateTimeFormatterBuilder()
-        .parseCaseInsensitive()
-        .appendPattern("h:mm a")
-        .toFormatter(Locale.ENGLISH)
+private val amPmParser = DateTimeFormatterBuilder()
+    .parseCaseInsensitive()
+    .appendPattern("h:mm a")
+    .toFormatter(Locale.ENGLISH)
 
-private val amPmSecondsParser =
-    DateTimeFormatterBuilder()
-        .parseCaseInsensitive()
-        .appendPattern("h:mm:ss a")
-        .toFormatter(Locale.ENGLISH)
+private val amPmSecondsParser = DateTimeFormatterBuilder()
+    .parseCaseInsensitive()
+    .appendPattern("h:mm:ss a")
+    .toFormatter(Locale.ENGLISH)
 
 fun availableText(value: String?): String? {
     val result = value?.trim() ?: return null
 
     return result.takeIf {
-        it.isNotEmpty() &&
+        it.isNotBlank() &&
                 !it.equals("null", true) &&
                 !it.equals("unknown", true) &&
                 !it.equals("not available", true) &&
@@ -62,29 +59,22 @@ fun availableText(value: String?): String? {
 }
 
 fun formatJourneyDate(date: LocalDate): String =
-    date.format(journeyFormatter)
+    date.format(longDateFormatter)
 
 fun formatArrivalDate(value: String?): String? {
     val valid = availableText(value) ?: return null
 
     return try {
-        LocalDate.parse(valid).format(journeyFormatter)
+        LocalDate.parse(valid).format(longDateFormatter)
     } catch (_: Exception) {
         valid
     }
 }
 
-/**
- * Parse valid railway times without changing their
- * underlying values.
- *
- * Supports 20:35, 20:35:00 and 8:35 PM.
- */
 fun parseClockTime(value: String?): LocalTime? {
     val raw = availableText(value) ?: return null
 
     val normalized = raw
-        .trim()
         .uppercase(Locale.ENGLISH)
         .replace(
             Regex("(?<=\\d)(AM|PM)$"),
@@ -114,8 +104,9 @@ fun formatClockTime(
     value: String?,
     format: AppTimeFormat
 ): String? {
-    val raw = availableText(value) ?: return null
-    val parsed = parseClockTime(raw) ?: return raw
+    val valid = availableText(value) ?: return null
+
+    val time = parseClockTime(valid) ?: return valid
 
     val pattern =
         if (format == AppTimeFormat.HOUR_12) {
@@ -124,7 +115,7 @@ fun formatClockTime(
             "HH:mm"
         }
 
-    return parsed.format(
+    return time.format(
         DateTimeFormatter.ofPattern(
             pattern,
             Locale.ENGLISH
@@ -174,43 +165,43 @@ fun StatusChip(
 ) {
     val scheme = MaterialTheme.colorScheme
 
-    val (background, foreground) =
-        when (statusCategoryOf(status)) {
-            StatusCategory.CONFIRMED ->
-                scheme.primaryContainer to
-                        scheme.onPrimaryContainer
+    val colors = when (statusCategoryOf(status)) {
+        StatusCategory.CONFIRMED ->
+            scheme.primaryContainer to
+                    scheme.onPrimaryContainer
 
-            StatusCategory.RAC ->
-                scheme.tertiaryContainer to
-                        scheme.onTertiaryContainer
+        StatusCategory.RAC ->
+            scheme.tertiaryContainer to
+                    scheme.onTertiaryContainer
 
-            StatusCategory.WAITING ->
-                scheme.secondaryContainer to
-                        scheme.onSecondaryContainer
+        StatusCategory.WAITING ->
+            scheme.secondaryContainer to
+                    scheme.onSecondaryContainer
 
-            StatusCategory.CANCELLED ->
-                scheme.errorContainer to
-                        scheme.onErrorContainer
+        StatusCategory.CANCELLED ->
+            scheme.errorContainer to
+                    scheme.onErrorContainer
 
-            StatusCategory.UNKNOWN ->
-                scheme.surfaceVariant to
-                        scheme.onSurfaceVariant
-        }
+        StatusCategory.UNKNOWN ->
+            scheme.surfaceVariant to
+                    scheme.onSurfaceVariant
+    }
 
     Surface(
         modifier = modifier,
-        shape = CircleShape,
-        color = background,
-        contentColor = foreground
+        color = colors.first,
+        contentColor = colors.second,
+        shape = CircleShape
     ) {
         Text(
             text = status,
             modifier = Modifier.padding(
-                horizontal = 12.dp,
+                horizontal = 11.dp,
                 vertical = 7.dp
             ),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
+            color = colors.second,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -229,16 +220,17 @@ fun JourneyTimeline(
     modifier: Modifier = Modifier,
     compact: Boolean = false
 ) {
-    val timeFormat = LocalPnrTimeFormat.current
+    val format = LocalPnrTimeFormat.current
+    val foreground = LocalContentColor.current
 
     val departure = formatClockTime(
         departureTime,
-        timeFormat
+        format
     )
 
     val arrival = formatClockTime(
         arrivalTime,
-        timeFormat
+        format
     )
 
     val from = availableText(fromStation)
@@ -246,25 +238,22 @@ fun JourneyTimeline(
 
     val durationText = formatJourneyDuration(duration)
 
-    val departureDateText =
+    val departureDate =
         if (compact) {
             journeyDate.format(shortDateFormatter)
         } else {
-            formatJourneyDate(journeyDate)
+            journeyDate.format(longDateFormatter)
         }
 
     val arrivalDateText =
-        availableText(arrivalDate)?.let { raw ->
+        availableText(arrivalDate)?.let {
             try {
-                val date = LocalDate.parse(raw)
-
-                if (compact) {
-                    date.format(shortDateFormatter)
-                } else {
-                    date.format(journeyFormatter)
-                }
+                LocalDate.parse(it).format(
+                    if (compact) shortDateFormatter
+                    else longDateFormatter
+                )
             } catch (_: Exception) {
-                raw
+                it
             }
         }
 
@@ -272,34 +261,34 @@ fun JourneyTimeline(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         TimelineStation(
             time = departure,
             station = from,
-            date = departureDateText,
-            modifier = Modifier.weight(1f),
+            date = departureDate,
             alignEnd = false,
-            compact = compact
+            compact = compact,
+            modifier = Modifier.weight(1f)
         )
 
         Column(
-            modifier = Modifier.weight(0.8f),
+            modifier = Modifier.weight(0.7f),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(5.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(5.dp)
         ) {
             Text(
                 text = "→",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary
+                fontWeight = FontWeight.Bold,
+                color = foreground
             )
 
             if (durationText != null) {
                 Text(
                     text = durationText,
                     style = MaterialTheme.typography.labelSmall,
-                    color =
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    color = foreground.copy(alpha = 0.82f)
                 )
             }
         }
@@ -308,9 +297,9 @@ fun JourneyTimeline(
             time = arrival,
             station = to,
             date = arrivalDateText,
-            modifier = Modifier.weight(1f),
             alignEnd = true,
-            compact = compact
+            compact = compact,
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -320,10 +309,12 @@ private fun TimelineStation(
     time: String?,
     station: String?,
     date: String?,
-    modifier: Modifier = Modifier,
     alignEnd: Boolean,
-    compact: Boolean
+    compact: Boolean,
+    modifier: Modifier = Modifier
 ) {
+    val foreground = LocalContentColor.current
+
     val alignment =
         if (alignEnd) Alignment.End else Alignment.Start
 
@@ -333,18 +324,19 @@ private fun TimelineStation(
     Column(
         modifier = modifier,
         horizontalAlignment = alignment,
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+        verticalArrangement =
+            Arrangement.spacedBy(4.dp)
     ) {
         if (time != null) {
             Text(
                 text = time,
-                style =
-                    if (compact) {
-                        MaterialTheme.typography.titleMedium
-                    } else {
-                        MaterialTheme.typography.headlineSmall
-                    },
+                style = if (compact) {
+                    MaterialTheme.typography.titleMedium
+                } else {
+                    MaterialTheme.typography.headlineSmall
+                },
                 fontWeight = FontWeight.Bold,
+                color = foreground,
                 textAlign = textAlignment,
                 maxLines = 2
             )
@@ -355,6 +347,7 @@ private fun TimelineStation(
                 text = station,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+                color = foreground,
                 textAlign = textAlignment,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -365,8 +358,7 @@ private fun TimelineStation(
             Text(
                 text = date,
                 style = MaterialTheme.typography.bodySmall,
-                color =
-                    MaterialTheme.colorScheme.onSurfaceVariant,
+                color = foreground.copy(alpha = 0.82f),
                 textAlign = textAlignment,
                 maxLines = 1
             )

@@ -13,11 +13,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,20 +32,15 @@ import com.first.pnrenq.R
 import com.first.pnrenq.data.mock.MockPnrData
 import com.first.pnrenq.domain.model.PassengerStatus
 import com.first.pnrenq.domain.model.PnrInfo
-
 import com.first.pnrenq.ui.common.JourneyTimeline
 import com.first.pnrenq.ui.common.availableText
 import com.first.pnrenq.ui.common.formatArrivalDate
 import com.first.pnrenq.ui.common.formatLastChecked
-
 import com.first.pnrenq.ui.theme.LocalPnrTimeFormat
 import com.first.pnrenq.ui.theme.PnrenqTheme
+import com.first.pnrenq.ui.theme.ThemeText as Text
 
 import java.util.Locale
-
-/* =========================================================
-   DETAILS SCREEN
-========================================================= */
 
 @Composable
 fun DetailsScreen(
@@ -83,15 +76,16 @@ fun DetailsScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Ticket details")
+                    Text(
+                        text = "Ticket details",
+                        fontWeight = FontWeight.Bold
+                    )
                 },
-
                 navigationIcon = {
                     TextButton(onClick = onBack) {
                         Text("← Back")
                     }
                 },
-
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                     scrolledContainerColor = Color.Transparent
@@ -128,60 +122,68 @@ fun DetailsScreen(
             }
 
             else -> {
-                DetailsContent(
-                    pnr = pnr,
-                    isRefreshing = isRefreshing,
-                    onRefresh = onRefresh,
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
 
-                    onDeleteClick = {
-                        if (!isRefreshing) {
+                    verticalArrangement =
+                        Arrangement.spacedBy(16.dp)
+                ) {
+                    TrainSummaryCard(
+                        pnr = pnr,
+                        isRefreshing = isRefreshing,
+                        onRefresh = onRefresh,
+                        onDelete = {
                             showDeleteDialog = true
                         }
-                    },
+                    )
 
-                    modifier = Modifier.padding(padding)
-                )
+                    if (pnr.passengers.isNotEmpty()) {
+                        PassengerListCard(pnr.passengers)
+                    }
+
+                    JourneyInformationCard(pnr)
+
+                    TicketInformationCard(pnr)
+
+                    LastUpdateCard(pnr.lastCheckedAtMillis)
+
+                    Spacer(Modifier.height(12.dp))
+                }
             }
         }
     }
 
-    if (
-        showDeleteDialog &&
-        pnr != null &&
-        !isRefreshing
-    ) {
+    if (showDeleteDialog && pnr != null && !isRefreshing) {
         AlertDialog(
             onDismissRequest = {
                 showDeleteDialog = false
             },
-
             title = {
                 Text("Remove saved PNR?")
             },
-
             text = {
                 Text(
-                    "PNR ${pnr.pnrNumber} and its saved " +
-                            "details will be removed from this device."
+                    "PNR ${pnr.pnrNumber} and its saved details " +
+                            "will be removed from this device."
                 )
             },
-
             confirmButton = {
                 TextButton(
                     onClick = {
                         showDeleteDialog = false
                         onDelete()
-                    },
-
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor =
-                            MaterialTheme.colorScheme.error
-                    )
+                    }
                 ) {
-                    Text("Delete")
+                    Text(
+                        "Delete",
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
-
             dismissButton = {
                 TextButton(
                     onClick = {
@@ -196,70 +198,7 @@ fun DetailsScreen(
 }
 
 /* =========================================================
-   MAIN DETAILS CONTENT
-========================================================= */
-
-@Composable
-private fun DetailsContent(
-    pnr: PnrInfo,
-    isRefreshing: Boolean,
-    onRefresh: () -> Unit,
-    onDeleteClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val details = pnr.details
-
-    val journeyFields = listOf(
-        "Travel class" to details.journeyClass,
-        "Quota" to details.quota,
-        "Boarding station" to details.boardingPoint,
-        "Reservation up to" to details.reservationUpto,
-        "Source name" to details.sourceStationName,
-        "Destination name" to details.destinationStationName,
-
-        "Distance" to details.distanceKm?.let {
-            "${formatNumber(it)} km"
-        },
-
-        "Chart status" to pnr.chartStatus
-    ).filter {
-        availableText(it.second) != null
-    }
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-
-        TrainSummaryCard(
-            pnr = pnr,
-            isRefreshing = isRefreshing,
-            onRefresh = onRefresh,
-            onDeleteClick = onDeleteClick
-        )
-
-        if (pnr.passengers.isNotEmpty()) {
-            PassengerListCard(pnr.passengers)
-        }
-
-        if (journeyFields.isNotEmpty()) {
-            JourneyInformationCard(journeyFields)
-        }
-
-        TicketInformationCard(pnr)
-
-        LastUpdateCard(pnr.lastCheckedAtMillis)
-
-        Spacer(Modifier.height(12.dp))
-    }
-}
-
-/* =========================================================
-   TRAIN SUMMARY
+   TRAIN CARD
 ========================================================= */
 
 @Composable
@@ -267,13 +206,13 @@ private fun TrainSummaryCard(
     pnr: PnrInfo,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDelete: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(25.dp),
 
         colors = CardDefaults.cardColors(
             containerColor = scheme.primaryContainer,
@@ -282,12 +221,13 @@ private fun TrainSummaryCard(
 
         border = BorderStroke(
             1.dp,
-            scheme.primary.copy(alpha = 0.20f)
+            scheme.primary.copy(alpha = 0.24f)
         )
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(13.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(12.dp)
         ) {
 
             Row(
@@ -295,7 +235,9 @@ private fun TrainSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    color = scheme.primary.copy(alpha = 0.13f),
+                    color = scheme.onPrimaryContainer.copy(
+                        alpha = 0.10f
+                    ),
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
@@ -312,22 +254,22 @@ private fun TrainSummaryCard(
 
                 Spacer(Modifier.weight(1f))
 
-                TrainActionButton(
+                TrainActionIcon(
+                    icon = R.drawable.ic_pnr_refresh,
+                    description = "Refresh PNR",
                     onClick = onRefresh,
                     enabled = !isRefreshing,
-                    iconRes = R.drawable.ic_pnr_refresh,
-                    contentDescription = "Refresh PNR status",
                     loading = isRefreshing
                 )
 
-                Spacer(Modifier.width(5.dp))
+                Spacer(Modifier.width(4.dp))
 
-                TrainActionButton(
-                    onClick = onDeleteClick,
+                TrainActionIcon(
+                    icon = R.drawable.ic_pnr_delete,
+                    description = "Delete PNR",
+                    onClick = onDelete,
                     enabled = !isRefreshing,
-                    iconRes = R.drawable.ic_pnr_delete,
-                    contentDescription = "Delete saved PNR",
-                    isDestructive = true
+                    destructive = true
                 )
             }
 
@@ -336,16 +278,15 @@ private fun TrainSummaryCard(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = scheme.onPrimaryContainer,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                maxLines = 2
             )
 
-            CopyablePnr(
-                pnrNumber = pnr.pnrNumber
-            )
+            CopyablePnr(pnr.pnrNumber)
 
             HorizontalDivider(
-                color = scheme.onPrimaryContainer.copy(alpha = 0.18f)
+                color = scheme.onPrimaryContainer.copy(
+                    alpha = 0.20f
+                )
             )
 
             JourneyTimeline(
@@ -360,40 +301,34 @@ private fun TrainSummaryCard(
 
             if (isRefreshing) {
                 LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = scheme.primary,
-                    trackColor = scheme.onPrimaryContainer.copy(
-                        alpha = 0.12f
-                    )
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
     }
 }
 
-/* =========================================================
-   TRAIN ACTION BUTTON
-========================================================= */
-
 @Composable
-private fun TrainActionButton(
+private fun TrainActionIcon(
+    icon: Int,
+    description: String,
     onClick: () -> Unit,
     enabled: Boolean,
-    iconRes: Int,
-    contentDescription: String,
     loading: Boolean = false,
-    isDestructive: Boolean = false
+    destructive: Boolean = false
 ) {
     val scheme = MaterialTheme.colorScheme
 
     Surface(
-        modifier = Modifier.size(44.dp),
         shape = CircleShape,
-        color = scheme.onPrimaryContainer.copy(alpha = 0.09f)
+        color = scheme.onPrimaryContainer.copy(
+            alpha = 0.10f
+        )
     ) {
         IconButton(
             onClick = onClick,
-            enabled = enabled
+            enabled = enabled,
+            modifier = Modifier.size(43.dp)
         ) {
             if (loading) {
                 CircularProgressIndicator(
@@ -403,23 +338,19 @@ private fun TrainActionButton(
                 )
             } else {
                 Icon(
-                    painter = painterResource(iconRes),
-                    contentDescription = contentDescription,
-                    tint = if (isDestructive) {
+                    painter = painterResource(icon),
+                    contentDescription = description,
+                    tint = if (destructive) {
                         scheme.error
                     } else {
                         scheme.onPrimaryContainer
                     },
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(21.dp)
                 )
             }
         }
     }
 }
-
-/* =========================================================
-   PNR COPY ICON
-========================================================= */
 
 @Composable
 private fun CopyablePnr(
@@ -430,15 +361,13 @@ private fun CopyablePnr(
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "PNR $pnrNumber",
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = color
+            color = color,
+            fontWeight = FontWeight.SemiBold
         )
 
         IconButton(
@@ -469,10 +398,12 @@ private fun CopyablePnr(
 }
 
 /* =========================================================
-   PASSENGER STATUS FORMAT
+   PASSENGER FORMATTING
 ========================================================= */
 
-private fun statusTokens(value: String): List<String> {
+private fun statusTokens(
+    value: String
+): List<String> {
     return Regex("[A-Za-z0-9]+")
         .findAll(value.uppercase(Locale.ROOT))
         .map { it.value }
@@ -541,21 +472,27 @@ private fun buildStatusText(
 
     var result = raw
 
-    // A status that already includes coach and berth
-    // takes precedence over separate metadata.
+    // Never append an already embedded coach/berth twice.
     if (!hasEmbeddedSeat(raw)) {
 
         if (
             coachText != null &&
-            !containsTokenSequence(result, coachText)
+            !containsTokenSequence(
+                result,
+                coachText
+            )
         ) {
-            result = listOf(result, coachText)
-                .filter { it.isNotBlank() }
-                .joinToString(" ")
+            result = listOf(
+                result,
+                coachText
+            ).filter {
+                it.isNotBlank()
+            }.joinToString(" ")
         }
 
         if (berthText != null) {
-            val seatPresent =
+
+            val alreadyPresent =
                 coachText != null &&
                         containsTokenSequence(
                             result,
@@ -563,32 +500,41 @@ private fun buildStatusText(
                         )
 
             if (
-                !seatPresent &&
+                !alreadyPresent &&
                 (
                         coachText != null ||
                                 hasEmbeddedSeat(result)
                         )
             ) {
-                result = listOf(result, berthText)
-                    .filter { it.isNotBlank() }
-                    .joinToString(" ")
+                result = listOf(
+                    result,
+                    berthText
+                ).filter {
+                    it.isNotBlank()
+                }.joinToString(" ")
             }
         }
     }
 
     if (
         typeText != null &&
-        !containsTokenSequence(result, typeText)
+        !containsTokenSequence(
+            result,
+            typeText
+        )
     ) {
-        result = listOf(result, typeText)
-            .filter { it.isNotBlank() }
-            .joinToString(" ")
+        result = listOf(
+            result,
+            typeText
+        ).filter {
+            it.isNotBlank()
+        }.joinToString(" ")
     }
 
     return result
         .trim()
         .replace(Regex("\\s+"), " ")
-        .takeIf { it.isNotEmpty() }
+        .takeIf { it.isNotBlank() }
 }
 
 private fun hasConfirmedAllocation(
@@ -614,7 +560,7 @@ private fun hasConfirmedAllocation(
 }
 
 /* =========================================================
-   PASSENGER LIST CARD
+   PASSENGERS
 ========================================================= */
 
 @Composable
@@ -638,17 +584,19 @@ private fun PassengerListCard(
 
         border = BorderStroke(
             1.dp,
-            scheme.outlineVariant.copy(alpha = 0.55f)
+            scheme.outlineVariant
         )
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(13.dp)
         ) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement =
+                    Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -658,8 +606,8 @@ private fun PassengerListCard(
                 )
 
                 Surface(
-                    color = scheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    color = scheme.surfaceContainerHigh
                 ) {
                     Text(
                         text = "${passengers.size} total",
@@ -673,31 +621,33 @@ private fun PassengerListCard(
             }
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement =
+                    Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showBookingLegend) {
                     StatusLegend(
-                        color = bookingColor(),
-                        text = "Booking"
+                        bookingColor(),
+                        "Booking"
                     )
                 }
 
                 StatusLegend(
-                    color = currentColor(),
-                    text = "Current"
+                    currentColor(),
+                    "Current"
                 )
             }
 
             HorizontalDivider()
 
             passengers.forEachIndexed { index, passenger ->
+
                 PassengerRow(passenger)
 
                 if (index < passengers.lastIndex) {
                     HorizontalDivider(
                         color = scheme.outlineVariant.copy(
-                            alpha = 0.55f
+                            alpha = 0.6f
                         )
                     )
                 }
@@ -705,10 +655,6 @@ private fun PassengerListCard(
         }
     }
 }
-
-/* =========================================================
-   PASSENGER ROW
-========================================================= */
 
 @Composable
 private fun PassengerRow(
@@ -740,29 +686,26 @@ private fun PassengerRow(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement =
+            Arrangement.spacedBy(9.dp)
     ) {
 
         Surface(
             shape = RoundedCornerShape(10.dp),
             color = scheme.secondaryContainer,
-
-            border = BorderStroke(
-                1.dp,
-                scheme.secondary.copy(alpha = 0.15f)
-            )
+            contentColor = scheme.onSecondaryContainer
         ) {
             Box(
                 modifier = Modifier.size(
-                    width = 38.dp,
-                    height = 34.dp
+                    width = 39.dp,
+                    height = 35.dp
                 ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "P${passenger.index}",
-                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelLarge,
                     color = scheme.onSecondaryContainer
                 )
             }
@@ -776,12 +719,10 @@ private fun PassengerRow(
             ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             if (bookingText != null) {
-                PassengerStatusBadge(
+                PassengerBadge(
                     text = bookingText,
-                    isCurrent = false,
-
+                    current = false,
                     modifier = if (currentText != null) {
                         Modifier.weight(1f, fill = false)
                     } else {
@@ -796,16 +737,14 @@ private fun PassengerRow(
             ) {
                 Text(
                     text = "/",
-                    style = MaterialTheme.typography.labelLarge,
                     color = scheme.onSurfaceVariant
                 )
             }
 
             if (currentText != null) {
-                PassengerStatusBadge(
+                PassengerBadge(
                     text = currentText,
-                    isCurrent = true,
-
+                    current = true,
                     modifier = if (bookingText != null) {
                         Modifier.weight(1f, fill = false)
                     } else {
@@ -818,12 +757,12 @@ private fun PassengerRow(
 }
 
 @Composable
-private fun PassengerStatusBadge(
+private fun PassengerBadge(
     text: String,
-    isCurrent: Boolean,
+    current: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val color = if (isCurrent) {
+    val color = if (current) {
         currentColor()
     } else {
         bookingColor()
@@ -831,12 +770,11 @@ private fun PassengerStatusBadge(
 
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
         color = color.copy(alpha = 0.12f),
-
+        shape = RoundedCornerShape(10.dp),
         border = BorderStroke(
             1.dp,
-            color.copy(alpha = 0.30f)
+            color.copy(alpha = 0.28f)
         )
     ) {
         Text(
@@ -845,12 +783,12 @@ private fun PassengerStatusBadge(
                 horizontal = 9.dp,
                 vertical = 7.dp
             ),
+            color = color,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = color,
+            textAlign = TextAlign.Center,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -861,29 +799,31 @@ private fun StatusLegend(
     text: String
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
+        horizontalArrangement =
+            Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            color = color,
+            modifier = Modifier.size(7.dp),
             shape = CircleShape,
-            modifier = Modifier.size(7.dp)
+            color = color
         ) {}
 
         Text(
             text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelSmall
         )
     }
 }
 
 @Composable
 private fun bookingColor(): Color {
-    val isLight =
-        MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val light =
+        MaterialTheme.colorScheme.background.luminance() >
+                0.5f
 
-    return if (isLight) {
+    return if (light) {
         Color(0xFF9A6700)
     } else {
         Color(0xFFFFCA68)
@@ -892,10 +832,11 @@ private fun bookingColor(): Color {
 
 @Composable
 private fun currentColor(): Color {
-    val isLight =
-        MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val light =
+        MaterialTheme.colorScheme.background.luminance() >
+                0.5f
 
-    return if (isLight) {
+    return if (light) {
         Color(0xFF15803D)
     } else {
         Color(0xFF86EFAC)
@@ -903,18 +844,37 @@ private fun currentColor(): Color {
 }
 
 /* =========================================================
-   JOURNEY INFORMATION
+   JOURNEY INFORMATION CARD
 ========================================================= */
 
 @Composable
 private fun JourneyInformationCard(
-    fields: List<Pair<String, String?>>
+    pnr: PnrInfo
 ) {
+    val details = pnr.details
+
+    val fields = listOf(
+        "Travel class" to details.journeyClass,
+        "Quota" to details.quota,
+        "Boarding station" to details.boardingPoint,
+        "Reservation up to" to details.reservationUpto,
+        "Source name" to details.sourceStationName,
+        "Destination name" to details.destinationStationName,
+        "Distance" to details.distanceKm?.let {
+            "${formatNumber(it)} km"
+        },
+        "Chart status" to pnr.chartStatus
+    ).filter {
+        availableText(it.second) != null
+    }
+
+    if (fields.isEmpty()) return
+
     val scheme = MaterialTheme.colorScheme
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(25.dp),
 
         colors = CardDefaults.cardColors(
             containerColor = scheme.surfaceContainerLow
@@ -927,67 +887,26 @@ private fun JourneyInformationCard(
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(15.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(13.dp)
         ) {
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    color = scheme.secondaryContainer,
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.size(50.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(
-                                R.drawable.ic_pnr_route
-                            ),
-                            contentDescription = null,
-                            tint = scheme.onSecondaryContainer,
-                            modifier = Modifier.size(25.dp)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.width(12.dp))
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement =
-                        Arrangement.spacedBy(3.dp)
-                ) {
-                    Text(
-                        text = "Journey information",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                        text = "Travel and reservation details",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            HorizontalDivider(
-                color = scheme.secondary.copy(alpha = 0.18f)
+            InformationHeader(
+                icon = R.drawable.ic_pnr_route,
+                title = "Journey information",
+                subtitle = "Travel and reservation details",
+                container = scheme.secondaryContainer,
+                foreground = scheme.onSecondaryContainer
             )
 
+            HorizontalDivider()
+
             fields.forEachIndexed { index, field ->
-                DetailRow(
-                    label = field.first,
-                    value = field.second
-                )
+                DetailRow(field.first, field.second)
 
                 if (index < fields.lastIndex) {
                     HorizontalDivider(
                         color = scheme.outlineVariant.copy(
-                            alpha = 0.45f
+                            alpha = 0.5f
                         )
                     )
                 }
@@ -997,7 +916,7 @@ private fun JourneyInformationCard(
 }
 
 /* =========================================================
-   TICKET INFORMATION
+   TICKET INFORMATION CARD
 ========================================================= */
 
 @Composable
@@ -1007,17 +926,16 @@ private fun TicketInformationCard(
     val details = pnr.details
     val scheme = MaterialTheme.colorScheme
 
-    val mainFare =
-        details.bookingFare ?: details.ticketFare
+    val fare = details.bookingFare
+        ?: details.ticketFare
 
-    val extraFields = listOf(
+    val fields = listOf(
         "Ticket fare" to details.ticketFare
-            ?.takeIf { it != mainFare }
+            ?.takeIf { it != fare }
             ?.let(::formatFare),
 
-        "Booking date" to formatArrivalDate(
-            details.bookingDate
-        ),
+        "Booking date" to
+                formatArrivalDate(details.bookingDate),
 
         "VIKALP" to details.vikalpStatus,
         "Ticket type" to details.ticketType
@@ -1025,16 +943,13 @@ private fun TicketInformationCard(
         availableText(it.second) != null
     }
 
-    if (
-        mainFare == null &&
-        extraFields.isEmpty()
-    ) {
+    if (fare == null && fields.isEmpty()) {
         return
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(25.dp),
 
         colors = CardDefaults.cardColors(
             containerColor = scheme.surfaceContainerHigh
@@ -1042,58 +957,55 @@ private fun TicketInformationCard(
 
         border = BorderStroke(
             1.dp,
-            scheme.primary.copy(alpha = 0.20f)
+            scheme.primary.copy(alpha = 0.22f)
         )
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(15.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(14.dp)
         ) {
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    color = scheme.primaryContainer,
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(13.dp),
+                    color = scheme.primaryContainer
                 ) {
                     Box(
-                        modifier = Modifier.size(50.dp),
+                        modifier = Modifier.size(49.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "₹",
                             style =
                                 MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = scheme.onPrimaryContainer
+                            color = scheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
                 Spacer(Modifier.width(12.dp))
 
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement =
-                        Arrangement.spacedBy(3.dp)
-                ) {
+                Column {
                     Text(
                         text = "Ticket information",
-                        style = MaterialTheme.typography.titleMedium,
+                        style =
+                            MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
 
                     Text(
                         text = "Fare and booking details",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onSurfaceVariant
+                        color = scheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
 
-            if (mainFare != null) {
+            if (fare != null) {
                 Surface(
                     color = scheme.surfaceContainerLow,
                     shape = RoundedCornerShape(16.dp)
@@ -1102,7 +1014,6 @@ private fun TicketInformationCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp),
-
                         horizontalArrangement =
                             Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -1113,38 +1024,25 @@ private fun TicketInformationCard(
                             } else {
                                 "Ticket fare"
                             },
-                            style =
-                                MaterialTheme.typography.bodyMedium,
                             color = scheme.onSurfaceVariant
                         )
 
                         Text(
-                            text = formatFare(mainFare),
-                            style =
-                                MaterialTheme.typography.headlineSmall,
+                            text = formatFare(fare),
+                            color = scheme.primary,
                             fontWeight = FontWeight.Bold,
-                            color = scheme.primary
+                            style =
+                                MaterialTheme.typography.headlineSmall
                         )
                     }
                 }
             }
 
-            if (extraFields.isNotEmpty()) {
+            if (fields.isNotEmpty()) {
                 HorizontalDivider()
 
-                extraFields.forEachIndexed { index, field ->
-                    DetailRow(
-                        label = field.first,
-                        value = field.second
-                    )
-
-                    if (index < extraFields.lastIndex) {
-                        HorizontalDivider(
-                            color = scheme.outlineVariant.copy(
-                                alpha = 0.45f
-                            )
-                        )
-                    }
+                fields.forEach { field ->
+                    DetailRow(field.first, field.second)
                 }
             }
         }
@@ -1152,7 +1050,7 @@ private fun TicketInformationCard(
 }
 
 /* =========================================================
-   LAST UPDATE
+   LAST UPDATE CARD
 ========================================================= */
 
 @Composable
@@ -1160,27 +1058,15 @@ private fun LastUpdateCard(
     lastCheckedAtMillis: Long
 ) {
     val scheme = MaterialTheme.colorScheme
-    val timeFormat = LocalPnrTimeFormat.current
-
-    val formattedTime = formatLastChecked(
-        lastCheckedAtMillis,
-        timeFormat
-    )
+    val format = LocalPnrTimeFormat.current
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
 
         colors = CardDefaults.cardColors(
-            containerColor = scheme.tertiaryContainer.copy(
-                alpha = 0.65f
-            ),
+            containerColor = scheme.tertiaryContainer,
             contentColor = scheme.onTertiaryContainer
-        ),
-
-        border = BorderStroke(
-            1.dp,
-            scheme.tertiary.copy(alpha = 0.20f)
         )
     ) {
         Row(
@@ -1188,13 +1074,13 @@ private fun LastUpdateCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
+                shape = RoundedCornerShape(13.dp),
                 color = scheme.onTertiaryContainer.copy(
-                    alpha = 0.10f
-                ),
-                shape = RoundedCornerShape(14.dp)
+                    alpha = 0.09f
+                )
             ) {
                 Box(
-                    modifier = Modifier.size(50.dp),
+                    modifier = Modifier.size(49.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -1203,38 +1089,39 @@ private fun LastUpdateCard(
                         ),
                         contentDescription = null,
                         tint = scheme.onTertiaryContainer,
-                        modifier = Modifier.size(25.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
 
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(13.dp))
 
             Column(
-                modifier = Modifier.weight(1f),
                 verticalArrangement =
-                    Arrangement.spacedBy(5.dp)
+                    Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = "Last update",
-                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = scheme.onTertiaryContainer
+                    color = scheme.onTertiaryContainer,
+                    style = MaterialTheme.typography.titleMedium
                 )
 
                 Text(
-                    text = formattedTime,
-                    style = MaterialTheme.typography.titleSmall,
+                    text = formatLastChecked(
+                        lastCheckedAtMillis,
+                        format
+                    ),
                     fontWeight = FontWeight.SemiBold,
                     color = scheme.onTertiaryContainer
                 )
 
                 Text(
                     text = "Last successful PNR check",
-                    style = MaterialTheme.typography.labelSmall,
                     color = scheme.onTertiaryContainer.copy(
-                        alpha = 0.78f
-                    )
+                        alpha = 0.82f
+                    ),
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
         }
@@ -1242,58 +1129,102 @@ private fun LastUpdateCard(
 }
 
 /* =========================================================
-   INFORMATION ROW
+   REUSABLE INFORMATION COMPONENTS
 ========================================================= */
+
+@Composable
+private fun InformationHeader(
+    icon: Int,
+    title: String,
+    subtitle: String,
+    container: Color,
+    foreground: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            color = container,
+            shape = RoundedCornerShape(13.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(49.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    tint = foreground,
+                    modifier = Modifier.size(23.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(
+            verticalArrangement =
+                Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Text(
+                text = subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
 
 @Composable
 private fun DetailRow(
     label: String,
     value: String?
 ) {
-    val text = availableText(value) ?: return
+    val valid = availableText(value) ?: return
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.Top
     ) {
         Text(
             text = label,
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium
         )
 
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(10.dp))
 
         Text(
-            text = text,
+            text = valid,
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.End,
             fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.End
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 }
 
-/* =========================================================
-   FORMATTING
-========================================================= */
-
-private fun formatNumber(value: Double): String {
-    return if (value % 1.0 == 0.0) {
+private fun formatNumber(value: Double): String =
+    if (value % 1.0 == 0.0) {
         String.format(Locale.US, "%,.0f", value)
     } else {
         String.format(Locale.US, "%,.1f", value)
     }
-}
 
 private fun formatFare(value: Double): String =
     "₹${formatNumber(value)}"
 
 @Preview(showBackground = true)
 @Composable
-private fun ModernDetailsPreview() {
+private fun DetailsPreview() {
     PnrenqTheme {
         DetailsScreen(
             pnr = MockPnrData.sample().last(),

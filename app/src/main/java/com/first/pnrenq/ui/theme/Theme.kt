@@ -9,256 +9,407 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 
-private data class ThemeColors(
-    val lightPrimary: Color,
-    val lightSecondary: Color,
-    val lightContainer: Color,
-    val lightBackground: Color,
-    val lightSurface: Color,
-    val darkPrimary: Color,
-    val darkSecondary: Color,
-    val darkContainer: Color
+data class PaletteColors(
+    val light: Color,
+    val dark: Color
 )
 
-private fun colorsFor(
+fun paletteColors(
     palette: AppThemePalette
-): ThemeColors {
-    return when (palette) {
+): PaletteColors = when (palette) {
 
-        AppThemePalette.OCEAN -> ThemeColors(
-            lightPrimary = Color(0xFF3066C2),
-            lightSecondary = Color(0xFF536889),
-            lightContainer = Color(0xFFD9E5FF),
-            lightBackground = Color(0xFFF6F8FF),
-            lightSurface = Color.White,
-            darkPrimary = Color(0xFFADC7FF),
-            darkSecondary = Color(0xFFB5C7E6),
-            darkContainer = Color(0xFF204783)
+    AppThemePalette.OCEAN ->
+        PaletteColors(
+            Color(0xFF2759AD),
+            Color(0xFFB5CFFF)
         )
 
-        AppThemePalette.FOREST -> ThemeColors(
-            lightPrimary = Color(0xFF287D56),
-            lightSecondary = Color(0xFF526D5C),
-            lightContainer = Color(0xFFD0F2DD),
-            lightBackground = Color(0xFFF5FAF5),
-            lightSurface = Color.White,
-            darkPrimary = Color(0xFF9BDDB7),
-            darkSecondary = Color(0xFFB4D2BD),
-            darkContainer = Color(0xFF195B3B)
+    AppThemePalette.FOREST ->
+        PaletteColors(
+            Color(0xFF23754C),
+            Color(0xFFA9E1BD)
         )
 
-        AppThemePalette.SUNSET -> ThemeColors(
-            lightPrimary = Color(0xFFC46335),
-            lightSecondary = Color(0xFF89604B),
-            lightContainer = Color(0xFFFFDCC9),
-            lightBackground = Color(0xFFFFF8F3),
-            lightSurface = Color.White,
-            darkPrimary = Color(0xFFFFB68D),
-            darkSecondary = Color(0xFFEDBEA6),
-            darkContainer = Color(0xFF8D421F)
+    AppThemePalette.SUNSET ->
+        PaletteColors(
+            Color(0xFFB44F27),
+            Color(0xFFFFBE98)
         )
 
-        AppThemePalette.MIDNIGHT -> ThemeColors(
-            lightPrimary = Color(0xFF6750B7),
-            lightSecondary = Color(0xFF655D7B),
-            lightContainer = Color(0xFFE7DDFF),
-            lightBackground = Color(0xFFF9F7FF),
-            lightSurface = Color.White,
-            darkPrimary = Color(0xFFCDBDFF),
-            darkSecondary = Color(0xFFC8BFE0),
-            darkContainer = Color(0xFF4D388D)
+    AppThemePalette.MIDNIGHT ->
+        PaletteColors(
+            Color(0xFF5740A3),
+            Color(0xFFD0C3FF)
         )
-    }
+
+    AppThemePalette.ROSE ->
+        PaletteColors(
+            Color(0xFFA7356B),
+            Color(0xFFFFB7D6)
+        )
+
+    AppThemePalette.LAGOON ->
+        PaletteColors(
+            Color(0xFF006F78),
+            Color(0xFF8FE6E6)
+        )
+
+    AppThemePalette.AMBER ->
+        PaletteColors(
+            Color(0xFF986108),
+            Color(0xFFFFD68A)
+        )
+
+    AppThemePalette.SLATE ->
+        PaletteColors(
+            Color(0xFF365B72),
+            Color(0xFFBDD7E6)
+        )
 }
 
-private fun createLightScheme(
-    colors: ThemeColors
-) = lightColorScheme(
-    primary = colors.lightPrimary,
-    onPrimary = Color.White,
+private fun isDarkMode(
+    mode: AppThemeMode,
+    systemDark: Boolean
+): Boolean = when (mode) {
+    AppThemeMode.SYSTEM -> systemDark
+    AppThemeMode.LIGHT,
+    AppThemeMode.SOFT_LIGHT,
+    AppThemeMode.HIGH_CONTRAST_LIGHT -> false
 
-    primaryContainer = colors.lightContainer,
-    onPrimaryContainer = Color(0xFF18233A),
+    AppThemeMode.DARK,
+    AppThemeMode.AMOLED,
+    AppThemeMode.SOFT_DARK,
+    AppThemeMode.HIGH_CONTRAST_DARK -> true
+}
 
-    secondary = colors.lightSecondary,
-    onSecondary = Color.White,
+private fun lightScheme(
+    mode: AppThemeMode,
+    colors: PaletteColors
+): androidx.compose.material3.ColorScheme {
 
-    secondaryContainer = colors.lightContainer,
-    onSecondaryContainer = Color(0xFF18233A),
+    val strongContrast =
+        mode == AppThemeMode.HIGH_CONTRAST_LIGHT
 
-    tertiary = colors.lightPrimary,
-    onTertiary = Color.White,
+    val soft =
+        mode == AppThemeMode.SOFT_LIGHT
 
-    background = colors.lightBackground,
-    onBackground = Color(0xFF1B1D22),
+    val background = when {
+        strongContrast -> Color.White
 
-    surface = colors.lightSurface,
-    onSurface = Color(0xFF1B1D22),
+        soft -> lerp(
+            Color(0xFFFFFCF7),
+            colors.light,
+            0.055f
+        )
 
-    surfaceVariant = Color(0xFFE7E9EF),
-    onSurfaceVariant = Color(0xFF474A52),
+        else -> lerp(
+            Color.White,
+            colors.light,
+            0.055f
+        )
+    }
 
-    outline = Color(0xFF777B85),
-    outlineVariant = Color(0xFFD9DCE3),
+    val surface = when {
+        strongContrast -> Color.White
+        soft -> Color(0xFFFFFDF9)
+        else -> Color.White
+    }
 
-    error = Color(0xFFBA1A1A),
-    onError = Color.White
-)
+    val primaryContainer = lerp(
+        Color.White,
+        colors.light,
+        if (strongContrast) 0.18f else 0.15f
+    )
 
-private fun createDarkScheme(
-    colors: ThemeColors,
-    amoled: Boolean
-) = darkColorScheme(
-    primary = colors.darkPrimary,
-    onPrimary = Color(0xFF152036),
+    val secondaryContainer = lerp(
+        Color.White,
+        colors.light,
+        0.105f
+    )
 
-    primaryContainer = colors.darkContainer,
-    onPrimaryContainer = Color(0xFFE4E9FF),
+    val tertiaryContainer = lerp(
+        Color.White,
+        colors.dark,
+        0.42f
+    )
 
-    secondary = colors.darkSecondary,
-    onSecondary = Color(0xFF233047),
-
-    secondaryContainer = colors.darkContainer,
-    onSecondaryContainer = Color(0xFFE4E9FF),
-
-    tertiary = colors.darkPrimary,
-    onTertiary = Color(0xFF152036),
-
-    background = if (amoled) {
-        Color.Black
+    val foreground = if (strongContrast) {
+        Color(0xFF090B0F)
     } else {
-        Color(0xFF111318)
-    },
+        Color(0xFF20232B)
+    }
 
-    onBackground = Color(0xFFE5E7EE),
+    return lightColorScheme(
+        primary = colors.light,
+        onPrimary = Color.White,
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = Color(0xFF152033),
 
-    surface = if (amoled) {
-        Color.Black
+        secondary = colors.light,
+        onSecondary = Color.White,
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = Color(0xFF20232B),
+
+        tertiary = colors.light,
+        onTertiary = Color.White,
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = Color(0xFF20232B),
+
+        background = background,
+        onBackground = foreground,
+
+        surface = surface,
+        onSurface = foreground,
+
+        surfaceVariant = secondaryContainer,
+        onSurfaceVariant =
+            if (strongContrast) {
+                Color(0xFF292D34)
+            } else {
+                Color(0xFF515763)
+            },
+
+        surfaceContainerLowest = surface,
+        surfaceContainerLow = lerp(
+            surface,
+            colors.light,
+            0.045f
+        ),
+        surfaceContainer = lerp(
+            surface,
+            colors.light,
+            0.075f
+        ),
+        surfaceContainerHigh = lerp(
+            surface,
+            colors.light,
+            0.115f
+        ),
+        surfaceContainerHighest = lerp(
+            surface,
+            colors.light,
+            0.15f
+        ),
+
+        outline = Color(0xFF767C87),
+        outlineVariant = lerp(
+            Color(0xFFE0E3E9),
+            colors.light,
+            0.10f
+        ),
+
+        error = Color(0xFFB42318),
+        onError = Color.White,
+        errorContainer = Color(0xFFFFDAD6),
+        onErrorContainer = Color(0xFF410002)
+    )
+}
+
+private fun darkScheme(
+    mode: AppThemeMode,
+    colors: PaletteColors
+): androidx.compose.material3.ColorScheme {
+
+    val amoled = mode == AppThemeMode.AMOLED
+
+    val highContrast =
+        mode == AppThemeMode.HIGH_CONTRAST_DARK
+
+    val soft =
+        mode == AppThemeMode.SOFT_DARK
+
+    val background = when {
+        amoled || highContrast -> Color.Black
+        soft -> Color(0xFF1C1E23)
+        else -> Color(0xFF101319)
+    }
+
+    val surface = when {
+        amoled || highContrast -> Color.Black
+        soft -> Color(0xFF22242A)
+        else -> Color(0xFF181B22)
+    }
+
+    val foreground = if (highContrast) {
+        Color.White
     } else {
-        Color(0xFF171A20)
-    },
+        Color(0xFFE7EAF0)
+    }
 
-    onSurface = Color(0xFFE5E7EE),
+    val darkContainer = lerp(
+        Color(0xFF10141B),
+        colors.light,
+        0.32f
+    )
 
-    surfaceVariant = if (amoled) {
-        Color(0xFF171717)
-    } else {
-        Color(0xFF292D35)
-    },
+    return darkColorScheme(
+        primary = colors.dark,
+        onPrimary = Color(0xFF10151D),
 
-    onSurfaceVariant = Color(0xFFC1C5D0),
+        primaryContainer = darkContainer,
+        onPrimaryContainer = Color(0xFFF5F7FF),
 
-    surfaceContainerLowest = if (amoled) {
-        Color.Black
-    } else {
-        Color(0xFF101217)
-    },
+        secondary = colors.dark,
+        onSecondary = Color(0xFF10151D),
 
-    surfaceContainerLow = if (amoled) {
-        Color(0xFF080808)
-    } else {
-        Color(0xFF1A1D23)
-    },
+        secondaryContainer = lerp(
+            Color(0xFF151920),
+            colors.light,
+            0.24f
+        ),
+        onSecondaryContainer = Color(0xFFF1F3FF),
 
-    surfaceContainer = if (amoled) {
-        Color(0xFF101010)
-    } else {
-        Color(0xFF202329)
-    },
+        tertiary = colors.dark,
+        onTertiary = Color(0xFF10151D),
 
-    surfaceContainerHigh = if (amoled) {
-        Color(0xFF181818)
-    } else {
-        Color(0xFF292C33)
-    },
+        tertiaryContainer = lerp(
+            Color(0xFF172027),
+            colors.light,
+            0.25f
+        ),
+        onTertiaryContainer = Color(0xFFF1F4F9),
 
-    surfaceContainerHighest = if (amoled) {
-        Color(0xFF222222)
-    } else {
-        Color(0xFF33363D)
-    },
+        background = background,
+        onBackground = foreground,
 
-    outline = Color(0xFF8B909A),
-    outlineVariant = Color(0xFF434750),
+        surface = surface,
+        onSurface = foreground,
 
-    error = Color(0xFFFFB4AB),
-    onError = Color(0xFF690005)
-)
+        surfaceVariant = Color(0xFF2A2E35),
+        onSurfaceVariant =
+            if (highContrast) {
+                Color(0xFFE8EBF1)
+            } else {
+                Color(0xFFC6CBD6)
+            },
+
+        surfaceContainerLowest =
+            if (amoled) Color.Black
+            else Color(0xFF13161B),
+
+        surfaceContainerLow =
+            if (amoled) Color(0xFF090909)
+            else lerp(
+                surface,
+                colors.light,
+                0.045f
+            ),
+
+        surfaceContainer =
+            if (amoled) Color(0xFF101010)
+            else lerp(
+                surface,
+                colors.light,
+                0.075f
+            ),
+
+        surfaceContainerHigh =
+            if (amoled) Color(0xFF191919)
+            else lerp(
+                surface,
+                colors.light,
+                0.11f
+            ),
+
+        surfaceContainerHighest =
+            if (amoled) Color(0xFF222222)
+            else Color(0xFF333840),
+
+        outline = Color(0xFF939BA8),
+        outlineVariant = Color(0xFF474C55),
+
+        error = Color(0xFFFFB4AB),
+        onError = Color(0xFF690005),
+        errorContainer = Color(0xFF93000A),
+        onErrorContainer = Color(0xFFFFDAD6)
+    )
+}
 
 @Composable
 fun PnrenqTheme(
     settings: ThemeSettings = ThemeSettings(),
     content: @Composable () -> Unit
 ) {
-    val systemDark = isSystemInDarkTheme()
-
-    val dark = when (settings.mode) {
-        AppThemeMode.SYSTEM -> systemDark
-        AppThemeMode.LIGHT -> false
-        AppThemeMode.DARK -> true
-        AppThemeMode.AMOLED -> true
-    }
-
-    val amoled = settings.mode == AppThemeMode.AMOLED
-
-    val colors = colorsFor(settings.palette)
-
-    val scheme = if (dark) {
-        createDarkScheme(
-            colors = colors,
-            amoled = amoled
-        )
-    } else {
-        createLightScheme(colors)
-    }
-
-    val baseColor = scheme.background
-
-    val accentColor = if (dark) {
-        colors.darkContainer
-    } else {
-        colors.lightContainer
-    }
-
-    // The backdrop changes with both palette and display mode.
-    val gradientBrush = Brush.linearGradient(
-        colors = listOf(
-            lerp(
-                baseColor,
-                accentColor,
-                if (amoled) 0.72f else if (dark) 0.58f else 0.78f
-            ),
-            lerp(
-                baseColor,
-                accentColor,
-                if (amoled) 0.28f else 0.22f
-            ),
-            baseColor
-        )
+    val dark = isDarkMode(
+        settings.mode,
+        isSystemInDarkTheme()
     )
 
-    val backgroundModifier =
-        if (settings.style == AppThemeStyle.GRADIENT) {
-            Modifier.background(gradientBrush)
+    val colors = paletteColors(settings.palette)
+
+    val scheme = if (dark) {
+        darkScheme(settings.mode, colors)
+    } else {
+        lightScheme(settings.mode, colors)
+    }
+
+    val backgroundBrush = if (
+        settings.style == AppThemeStyle.GRADIENT
+    ) {
+        if (dark) {
+            Brush.linearGradient(
+                listOf(
+                    lerp(
+                        scheme.background,
+                        colors.light,
+                        if (
+                            settings.mode == AppThemeMode.AMOLED
+                        ) 0.48f else 0.38f
+                    ),
+                    lerp(
+                        scheme.background,
+                        colors.dark,
+                        0.09f
+                    ),
+                    scheme.background
+                )
+            )
         } else {
-            Modifier.background(baseColor)
+            Brush.linearGradient(
+                listOf(
+                    lerp(
+                        scheme.background,
+                        colors.light,
+                        0.22f
+                    ),
+                    lerp(
+                        scheme.background,
+                        colors.dark,
+                        0.22f
+                    ),
+                    scheme.background
+                )
+            )
         }
+    } else {
+        Brush.linearGradient(
+            listOf(
+                scheme.background,
+                scheme.background
+            )
+        )
+    }
 
     MaterialTheme(
         colorScheme = scheme,
         typography = Typography
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(backgroundModifier)
+        CompositionLocalProvider(
+            LocalPnrVisualSettings provides settings
         ) {
-            content()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundBrush)
+            ) {
+                content()
+            }
         }
     }
 }

@@ -3,21 +3,21 @@
 
 package com.first.pnrenq.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -26,6 +26,8 @@ import com.first.pnrenq.ui.theme.AppThemePalette
 import com.first.pnrenq.ui.theme.AppThemeStyle
 import com.first.pnrenq.ui.theme.AppTimeFormat
 import com.first.pnrenq.ui.theme.ThemeSettings
+import com.first.pnrenq.ui.theme.paletteColors
+import com.first.pnrenq.ui.theme.ThemeText as Text
 
 @Composable
 fun SettingsScreen(
@@ -38,24 +40,25 @@ fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scheme = MaterialTheme.colorScheme
+
     Scaffold(
         modifier = modifier,
-
-        // Transparent to reveal the shared theme background.
         containerColor = Color.Transparent,
 
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Settings")
+                    Text(
+                        text = "Settings",
+                        fontWeight = FontWeight.Bold
+                    )
                 },
-
                 navigationIcon = {
                     TextButton(onClick = onBack) {
                         Text("← Back")
                     }
                 },
-
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                     scrolledContainerColor = Color.Transparent
@@ -71,28 +74,32 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
 
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(18.dp)
         ) {
 
             Text(
-                text = "Personalize PNR EXPERT",
+                text = "Make it yours",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = "Choose your appearance, background " +
-                        "style and time format. All changes are " +
-                        "saved automatically.",
+                text = "Mix appearance, color palette and " +
+                        "background style to create your look.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = scheme.onSurfaceVariant
             )
+
+            /* ---------- Live preview ---------- */
+
+            ThemePreviewCard(settings)
 
             /* ---------- Appearance ---------- */
 
             SettingsSection(
                 title = "Appearance",
-                subtitle = "Control light and dark mode"
+                subtitle = "8 display modes"
             ) {
                 AppThemeMode.entries.forEach { mode ->
                     SelectionRow(
@@ -106,11 +113,11 @@ fun SettingsScreen(
                 }
             }
 
-            /* ---------- Color palette ---------- */
+            /* ---------- Palettes ---------- */
 
             SettingsSection(
                 title = "Color palette",
-                subtitle = "Choose your accent colors"
+                subtitle = "8 coordinated palettes"
             ) {
                 AppThemePalette.entries.forEach { palette ->
                     SelectionRow(
@@ -120,18 +127,18 @@ fun SettingsScreen(
                         onClick = {
                             onPaletteSelected(palette)
                         },
-                        leadingContent = {
+                        leading = {
                             PalettePreview(palette)
                         }
                     )
                 }
             }
 
-            /* ---------- New style selector ---------- */
+            /* ---------- Background style ---------- */
 
             SettingsSection(
                 title = "Background style",
-                subtitle = "Solid or blended theme colors"
+                subtitle = "Simplified or gradient"
             ) {
                 AppThemeStyle.entries.forEach { style ->
                     SelectionRow(
@@ -141,7 +148,7 @@ fun SettingsScreen(
                         onClick = {
                             onStyleSelected(style)
                         },
-                        leadingContent = {
+                        leading = {
                             StylePreview(style)
                         }
                     )
@@ -152,7 +159,7 @@ fun SettingsScreen(
 
             SettingsSection(
                 title = "Time format",
-                subtitle = "Used across the application"
+                subtitle = "Used on Home and ticket details"
             ) {
                 AppTimeFormat.entries.forEach { format ->
                     SelectionRow(
@@ -167,15 +174,15 @@ fun SettingsScreen(
                 }
             }
 
-            /* ---------- Current selection ---------- */
+            /* ---------- Summary ---------- */
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(22.dp),
 
                 colors = CardDefaults.cardColors(
-                    containerColor =
-                        MaterialTheme.colorScheme.primaryContainer
+                    containerColor = scheme.primaryContainer,
+                    contentColor = scheme.onPrimaryContainer
                 )
             ) {
                 Column(
@@ -183,33 +190,29 @@ fun SettingsScreen(
                     verticalArrangement =
                         Arrangement.spacedBy(8.dp)
                 ) {
+
                     Text(
                         text = "Current preferences",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color =
-                            MaterialTheme.colorScheme.onPrimaryContainer
+                        color = scheme.onPrimaryContainer
                     )
 
                     Text(
-                        text = settings.mode.title +
-                                " · " + settings.palette.title +
-                                " · " + settings.style.title,
+                        text = "${settings.mode.title} · " +
+                                "${settings.palette.title} · " +
+                                settings.style.title,
                         style = MaterialTheme.typography.bodyMedium,
-                        color =
-                            MaterialTheme.colorScheme.onPrimaryContainer
+                        color = scheme.onPrimaryContainer
                     )
 
                     Text(
-                        text = "Time: " + settings.timeFormat.title,
+                        text = "Time: ${settings.timeFormat.title}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color =
-                            MaterialTheme.colorScheme.onPrimaryContainer
+                        color = scheme.onPrimaryContainer
                     )
                 }
             }
-
-            /* ---------- Reset everything ---------- */
 
             OutlinedButton(
                 onClick = onReset,
@@ -222,7 +225,123 @@ fun SettingsScreen(
                 )
             }
 
+            Text(
+                text = "Reset restores System, Ocean, " +
+                        "Simplified and 24-hour format.",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant
+            )
+
             Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun ThemePreviewCard(
+    settings: ThemeSettings
+) {
+    val scheme = MaterialTheme.colorScheme
+    val palette = paletteColors(settings.palette)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+
+        colors = CardDefaults.cardColors(
+            containerColor = scheme.surfaceContainerLow
+        ),
+
+        border = BorderStroke(
+            1.dp,
+            scheme.outlineVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement =
+                Arrangement.spacedBy(12.dp)
+        ) {
+
+            Text(
+                text = "LIVE PREVIEW",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = scheme.primary
+            )
+
+            val shape = RoundedCornerShape(18.dp)
+
+            val previewModifier = Modifier
+                .fillMaxWidth()
+                .height(115.dp)
+                .clip(shape)
+
+            val backgroundBrush =
+                if (settings.style == AppThemeStyle.GRADIENT) {
+                    Brush.linearGradient(
+                        listOf(
+                            palette.light,
+                            palette.dark,
+                            scheme.background
+                        )
+                    )
+                } else {
+                    Brush.linearGradient(
+                        listOf(
+                            scheme.primaryContainer,
+                            scheme.primaryContainer
+                        )
+                    )
+                }
+
+            Box(
+                modifier = previewModifier
+                    .background(backgroundBrush)
+                    .padding(14.dp)
+            ) {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(6.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(9.dp),
+                        color = scheme.surface.copy(alpha = 0.94f)
+                    ) {
+                        Text(
+                            text = "PNR EXPERT",
+                            modifier = Modifier.padding(
+                                horizontal = 12.dp,
+                                vertical = 7.dp
+                            ),
+                            style =
+                                MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = scheme.onSurface
+                        )
+                    }
+
+                    Surface(
+                        color = scheme.surface.copy(alpha = 0.94f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "${settings.palette.title} · " +
+                                    settings.style.title,
+                            modifier = Modifier.padding(9.dp),
+                            style =
+                                MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurface
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = "This is how your selected colors blend.",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -233,19 +352,21 @@ private fun SettingsSection(
     subtitle: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val scheme = MaterialTheme.colorScheme
+
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.Bold
         )
 
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = scheme.onSurfaceVariant
         )
 
         Card(
@@ -253,8 +374,7 @@ private fun SettingsSection(
             shape = RoundedCornerShape(20.dp),
 
             colors = CardDefaults.cardColors(
-                containerColor =
-                    MaterialTheme.colorScheme.surfaceContainerLow
+                containerColor = scheme.surfaceContainerLow
             )
         ) {
             Column(content = content)
@@ -268,8 +388,10 @@ private fun SelectionRow(
     description: String,
     selected: Boolean,
     onClick: () -> Unit,
-    leadingContent: (@Composable () -> Unit)? = null
+    leading: (@Composable () -> Unit)? = null
 ) {
+    val scheme = MaterialTheme.colorScheme
+
     Column {
         Row(
             modifier = Modifier
@@ -280,32 +402,30 @@ private fun SelectionRow(
                     vertical = 12.dp
                 ),
 
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
-            leadingContent?.let {
-                it()
-                Spacer(Modifier.width(14.dp))
-            }
+            leading?.invoke()
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement =
-                    Arrangement.spacedBy(3.dp)
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight =
-                        if (selected) FontWeight.SemiBold
-                        else FontWeight.Normal
+                    fontWeight = if (selected) {
+                        FontWeight.SemiBold
+                    } else {
+                        FontWeight.Normal
+                    }
                 )
 
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color =
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                    color = scheme.onSurfaceVariant
                 )
             }
 
@@ -317,7 +437,7 @@ private fun SelectionRow(
 
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = 16.dp),
-            color = MaterialTheme.colorScheme.outlineVariant
+            color = scheme.outlineVariant
         )
     }
 }
@@ -326,18 +446,20 @@ private fun SelectionRow(
 private fun PalettePreview(
     palette: AppThemePalette
 ) {
-    val color = when (palette) {
-        AppThemePalette.OCEAN -> Color(0xFF3066C2)
-        AppThemePalette.FOREST -> Color(0xFF287D56)
-        AppThemePalette.SUNSET -> Color(0xFFC46335)
-        AppThemePalette.MIDNIGHT -> Color(0xFF6750B7)
-    }
+    val colors = paletteColors(palette)
 
     Box(
         modifier = Modifier
-            .size(38.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(color)
+            .size(40.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        colors.light,
+                        colors.dark
+                    )
+                )
+            )
     )
 }
 
@@ -347,27 +469,28 @@ private fun StylePreview(
 ) {
     val scheme = MaterialTheme.colorScheme
 
-    val modifier = Modifier
-        .size(38.dp)
-        .clip(RoundedCornerShape(12.dp))
-
-    if (style == AppThemeStyle.GRADIENT) {
-        Box(
-            modifier = modifier.background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        scheme.primary,
-                        scheme.primaryContainer,
-                        scheme.tertiary
-                    )
+    val previewBrush =
+        if (style == AppThemeStyle.GRADIENT) {
+            Brush.linearGradient(
+                listOf(
+                    scheme.primary,
+                    scheme.primaryContainer,
+                    scheme.tertiary
                 )
             )
-        )
-    } else {
-        Box(
-            modifier = modifier.background(
-                scheme.primaryContainer
+        } else {
+            Brush.linearGradient(
+                listOf(
+                    scheme.primaryContainer,
+                    scheme.primaryContainer
+                )
             )
-        )
-    }
+        }
+
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(previewBrush)
+    )
 }

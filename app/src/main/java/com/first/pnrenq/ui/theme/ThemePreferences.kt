@@ -11,21 +11,20 @@ enum class AppThemeMode(
     val title: String,
     val description: String
 ) {
-    SYSTEM(
-        "System default",
-        "Follow your device appearance"
+    SYSTEM("System default", "Follow device appearance"),
+    LIGHT("Light", "Classic bright surfaces"),
+    DARK("Dark", "Comfortable dark surfaces"),
+    AMOLED("AMOLED", "Black OLED-friendly surfaces"),
+
+    SOFT_LIGHT("Soft Light", "Gentle, warm light surfaces"),
+    SOFT_DARK("Soft Dark", "Muted charcoal surfaces"),
+    HIGH_CONTRAST_LIGHT(
+        "High Contrast Light",
+        "Bright white with stronger text contrast"
     ),
-    LIGHT(
-        "Light",
-        "Always use light mode"
-    ),
-    DARK(
-        "Dark",
-        "Always use dark mode"
-    ),
-    AMOLED(
-        "AMOLED",
-        "Black surfaces with deep contrast"
+    HIGH_CONTRAST_DARK(
+        "High Contrast Dark",
+        "Near-black with stronger text contrast"
     )
 }
 
@@ -33,10 +32,15 @@ enum class AppThemePalette(
     val title: String,
     val description: String
 ) {
-    OCEAN("Ocean", "Calm blue"),
+    OCEAN("Ocean", "Deep blue"),
     FOREST("Forest", "Natural green"),
-    SUNSET("Sunset", "Warm orange"),
-    MIDNIGHT("Midnight", "Modern violet")
+    SUNSET("Sunset", "Warm terracotta"),
+    MIDNIGHT("Midnight", "Rich violet"),
+
+    ROSE("Rose", "Soft berry pink"),
+    LAGOON("Lagoon", "Fresh teal"),
+    AMBER("Amber", "Golden honey"),
+    SLATE("Slate", "Cool steel blue")
 }
 
 enum class AppThemeStyle(
@@ -45,11 +49,11 @@ enum class AppThemeStyle(
 ) {
     SIMPLIFIED(
         "Simplified",
-        "Clean background with solid colors"
+        "Clean solid-color backgrounds"
     ),
     GRADIENT(
         "Gradient",
-        "Soft, blended colors across screens"
+        "Blended backgrounds and gradient text"
     )
 }
 
@@ -57,14 +61,8 @@ enum class AppTimeFormat(
     val title: String,
     val description: String
 ) {
-    HOUR_12(
-        "12-hour",
-        "Example: 8:35 PM"
-    ),
-    HOUR_24(
-        "24-hour",
-        "Example: 20:35"
-    )
+    HOUR_12("12-hour", "8:35 PM"),
+    HOUR_24("24-hour", "20:35")
 }
 
 data class ThemeSettings(
@@ -76,6 +74,10 @@ data class ThemeSettings(
 
 val LocalPnrTimeFormat = compositionLocalOf {
     AppTimeFormat.HOUR_24
+}
+
+val LocalPnrVisualSettings = compositionLocalOf {
+    ThemeSettings()
 }
 
 class ThemePreferences(context: Context) {
@@ -93,66 +95,57 @@ class ThemePreferences(context: Context) {
         key: String,
         default: T
     ): T {
-        val saved = preferences.getString(
-            key,
-            default.name
-        )
+        val saved = preferences.getString(key, default.name)
 
         return enumValues<T>().firstOrNull {
             it.name == saved
         } ?: default
     }
 
-    private fun load(): ThemeSettings {
-        return ThemeSettings(
-            mode = readEnum(
-                "theme_mode",
-                AppThemeMode.SYSTEM
-            ),
-            palette = readEnum(
-                "theme_palette",
-                AppThemePalette.OCEAN
-            ),
-            style = readEnum(
-                "theme_style",
-                AppThemeStyle.SIMPLIFIED
-            ),
-            timeFormat = readEnum(
-                "time_format",
-                AppTimeFormat.HOUR_24
-            )
+    private fun load() = ThemeSettings(
+        mode = readEnum(
+            "theme_mode",
+            AppThemeMode.SYSTEM
+        ),
+        palette = readEnum(
+            "theme_palette",
+            AppThemePalette.OCEAN
+        ),
+        style = readEnum(
+            "theme_style",
+            AppThemeStyle.SIMPLIFIED
+        ),
+        timeFormat = readEnum(
+            "time_format",
+            AppTimeFormat.HOUR_24
         )
-    }
+    )
 
-    fun setMode(mode: AppThemeMode) {
-        settings = settings.copy(mode = mode)
-
+    fun setMode(value: AppThemeMode) {
+        settings = settings.copy(mode = value)
         preferences.edit()
-            .putString("theme_mode", mode.name)
+            .putString("theme_mode", value.name)
             .apply()
     }
 
-    fun setPalette(palette: AppThemePalette) {
-        settings = settings.copy(palette = palette)
-
+    fun setPalette(value: AppThemePalette) {
+        settings = settings.copy(palette = value)
         preferences.edit()
-            .putString("theme_palette", palette.name)
+            .putString("theme_palette", value.name)
             .apply()
     }
 
-    fun setStyle(style: AppThemeStyle) {
-        settings = settings.copy(style = style)
-
+    fun setStyle(value: AppThemeStyle) {
+        settings = settings.copy(style = value)
         preferences.edit()
-            .putString("theme_style", style.name)
+            .putString("theme_style", value.name)
             .apply()
     }
 
-    fun setTimeFormat(format: AppTimeFormat) {
-        settings = settings.copy(timeFormat = format)
-
+    fun setTimeFormat(value: AppTimeFormat) {
+        settings = settings.copy(timeFormat = value)
         preferences.edit()
-            .putString("time_format", format.name)
+            .putString("time_format", value.name)
             .apply()
     }
 
