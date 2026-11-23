@@ -1,0 +1,176 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "5394dd803a368be72e3c6577a47fc89e",
+    "entities": [
+      {
+        "tableName": "saved_pnrs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pnrNumber` TEXT NOT NULL, `trainNumber` TEXT NOT NULL, `trainName` TEXT NOT NULL, `journeyDate` TEXT NOT NULL, `fromStation` TEXT NOT NULL, `toStation` TEXT NOT NULL, `bookingStatus` TEXT NOT NULL, `currentStatus` TEXT NOT NULL, `chartStatus` TEXT, `lastCheckedAtMillis` INTEGER NOT NULL, `createdAtMillis` INTEGER NOT NULL, PRIMARY KEY(`pnrNumber`))",
+        "fields": [
+          {
+            "fieldPath": "pnrNumber",
+            "columnName": "pnrNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trainNumber",
+            "columnName": "trainNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trainName",
+            "columnName": "trainName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "journeyDate",
+            "columnName": "journeyDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromStation",
+            "columnName": "fromStation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "toStation",
+            "columnName": "toStation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bookingStatus",
+            "columnName": "bookingStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentStatus",
+            "columnName": "currentStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chartStatus",
+            "columnName": "chartStatus",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastCheckedAtMillis",
+            "columnName": "lastCheckedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "createdAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pnrNumber"
+          ]
+        }
+      },
+      {
+        "tableName": "passengers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`passengerId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pnrNumber` TEXT NOT NULL, `passengerIndex` INTEGER NOT NULL, `bookingStatus` TEXT NOT NULL, `currentStatus` TEXT NOT NULL, `coach` TEXT, `berth` TEXT, FOREIGN KEY(`pnrNumber`) REFERENCES `saved_pnrs`(`pnrNumber`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "passengerId",
+            "columnName": "passengerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pnrNumber",
+            "columnName": "pnrNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "passengerIndex",
+            "columnName": "passengerIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bookingStatus",
+            "columnName": "bookingStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentStatus",
+            "columnName": "currentStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coach",
+            "columnName": "coach",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "berth",
+            "columnName": "berth",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "passengerId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_passengers_pnrNumber",
+            "unique": false,
+            "columnNames": [
+              "pnrNumber"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_passengers_pnrNumber` ON `${TABLE_NAME}` (`pnrNumber`)"
+          },
+          {
+            "name": "index_passengers_pnrNumber_passengerIndex",
+            "unique": true,
+            "columnNames": [
+              "pnrNumber",
+              "passengerIndex"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_passengers_pnrNumber_passengerIndex` ON `${TABLE_NAME}` (`pnrNumber`, `passengerIndex`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "saved_pnrs",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "pnrNumber"
+            ],
+            "referencedColumns": [
+              "pnrNumber"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5394dd803a368be72e3c6577a47fc89e')"
+    ]
+  }
+}

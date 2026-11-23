@@ -1,34 +1,219 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
 
-# PNR enq additions
-*.jks
-*.keystore
-keystore.properties
+# ============================================================
+# PNR EXPERT
+# Git ignore rules
+# ============================================================
+
+# ------------------------------------------------------------
+# Local Android configuration
+# ------------------------------------------------------------
+
 local.properties
-.dev.vars
+**/local.properties
+
+*.local.properties
+*.local.json
+*.local.toml
+
+# ------------------------------------------------------------
+# Private backend implementation
+# ------------------------------------------------------------
+
+/backend/
+/cloudflare/
+/workers/
+/serverless/
+/aws/
+/private/
+/internal-config/
+
+# Private deployment configuration
+wrangler.toml
+wrangler.json
+wrangler.jsonc
+wrangler.secrets.json
+
+**/.wrangler/
+**/.dev.vars
+**/.dev.vars.*
+
+# ------------------------------------------------------------
+# Credentials and environment variables
+# ------------------------------------------------------------
+
 .env
 .env.*
+!.env.example
+
+**/.env
+**/.env.*
+!**/.env.example
+
 secrets/
-node_modules/
-.wrangler/
-dist/
-.aws-sam/
-diagnose/
+**/secrets/
+
+credentials.json
+**/credentials.json
+
+service-account*.json
+
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ------------------------------------------------------------
+# Android signing
+# ------------------------------------------------------------
+
+*.jks
+*.keystore
+
+keystore.properties
+signing.properties
+release.properties
+
+# ------------------------------------------------------------
+# Android Studio
+# ------------------------------------------------------------
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+.vscode/
+
+/captures/
+.externalNativeBuild/
+.cxx/
+**/.cxx/
+
+# ------------------------------------------------------------
+# Gradle and Kotlin
+# ------------------------------------------------------------
+
+.gradle/
+**/.gradle/
+
+build/
+**/build/
+
+.kotlin/
+**/.kotlin/
+
+# Keep the Gradle wrapper and version catalog tracked.
+
+# ------------------------------------------------------------
+# Compiled Android artifacts
+# ------------------------------------------------------------
+
 *.apk
 *.aab
-# IDE settings
-.idea/
+*.ap_
+*.dex
+
+*.hprof
+*.heapdump
+
+# ------------------------------------------------------------
+# Native build artifacts
+# ------------------------------------------------------------
+
+*.so
+*.o
+*.obj
+
+# ------------------------------------------------------------
+# Local databases
+# ------------------------------------------------------------
+
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+*.sqlite
+*.sqlite3
+
+# Keep Room schema JSON files tracked.
+
+# ------------------------------------------------------------
+# Dependency and build output
+# ------------------------------------------------------------
+
+node_modules/
+**/node_modules/
+
+dist/
+**/dist/
+
+coverage/
+**/coverage/
+
+# ------------------------------------------------------------
+# Diagnostics and logs
+# ------------------------------------------------------------
+
+diagnose/
+diagnostics/
+reports/
+
+*.log
+*.log.*
+*.trace
+
+*.tmp
+*.bak
+*.backup
+
+tmp/
+temp/
+
+# ------------------------------------------------------------
+# Python diagnostic environments
+# ------------------------------------------------------------
+
+__pycache__/
+*.py[cod]
+
+.venv/
+venv/
+.pytest_cache/
+
+# ------------------------------------------------------------
+# Operating system files
+# ------------------------------------------------------------
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+Thumbs.db
+Desktop.ini
+
+$RECYCLE.BIN/
+.Spotlight-V100
+.Trashes
+
+# ------------------------------------------------------------
+# Editor backup files
+# ------------------------------------------------------------
+
+*~
+*.swp
+*.swo
+
+# ------------------------------------------------------------
+# Important tracked files
+# ------------------------------------------------------------
+
+# README.md
+# LICENSE.md
+# SETUP.md
+# .gitignore
+# Android source code
+# Android resources
+# Gradle configuration
+# Gradle wrapper
+# Room schema exports

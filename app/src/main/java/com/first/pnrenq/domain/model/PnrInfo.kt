@@ -1,14 +1,43 @@
+
 package com.first.pnrenq.domain.model
 
 import java.time.LocalDate
 
-/** One passenger's seat status inside a PNR. Passenger names are deliberately not stored. */
 data class PassengerStatus(
     val index: Int,
     val bookingStatus: String,
     val currentStatus: String,
     val coach: String?,
-    val berth: String?
+    val berth: String?,
+    val bookingStatusCode: String? = null,
+    val currentStatusCode: String? = null,
+    val bookingCoach: String? = null,
+    val bookingBerthNo: Int? = null,
+    val currentBerthNo: Int? = null,
+    val bookingBerthCode: String? = null,
+    val currentBerthCode: String? = null,
+    val coachPosition: Int? = null
+)
+
+data class PnrDetails(
+    val departureTime: String? = null,
+    val arrivalDate: String? = null,
+    val arrivalTime: String? = null,
+    val duration: String? = null,
+    val sourceStationName: String? = null,
+    val destinationStationName: String? = null,
+    val boardingPoint: String? = null,
+    val reservationUpto: String? = null,
+    val journeyClass: String? = null,
+    val quota: String? = null,
+    val distanceKm: Double? = null,
+    val bookingFare: Double? = null,
+    val ticketFare: Double? = null,
+    val bookingDate: String? = null,
+    val vikalpStatus: String? = null,
+    val ticketType: String? = null,
+    val provider: String? = null,
+    val providerTimestamp: String? = null
 )
 
 data class PnrInfo(
@@ -22,26 +51,50 @@ data class PnrInfo(
     val currentStatus: String,
     val chartStatus: String?,
     val passengers: List<PassengerStatus>,
-    val lastCheckedAtMillis: Long
+    val lastCheckedAtMillis: Long,
+    val details: PnrDetails = PnrDetails()
 )
 
-enum class StatusCategory { CONFIRMED, RAC, WAITING, CANCELLED, UNKNOWN }
+enum class StatusCategory {
+    CONFIRMED,
+    RAC,
+    WAITING,
+    CANCELLED,
+    UNKNOWN
+}
 
-/** Groups a raw railway status text (CNF, RAC, WL 10, ...) for display purposes only. */
 fun statusCategoryOf(status: String): StatusCategory {
     val s = status.trim().uppercase()
+
     return when {
-        s.startsWith("CNF") -> StatusCategory.CONFIRMED
-        s.startsWith("RAC") -> StatusCategory.RAC
-        s.startsWith("CAN") -> StatusCategory.CANCELLED
-        s.contains("WL") -> StatusCategory.WAITING
-        else -> StatusCategory.UNKNOWN
+        s.startsWith("CNF") ||
+                s.startsWith("CONFIRM") ->
+            StatusCategory.CONFIRMED
+
+        s.startsWith("RAC") ->
+            StatusCategory.RAC
+
+        s.startsWith("CAN") ->
+            StatusCategory.CANCELLED
+
+        s.contains("WL") ->
+            StatusCategory.WAITING
+
+        else ->
+            StatusCategory.UNKNOWN
     }
 }
 
-/** For example "B2 / 34", or null when no passenger has a coach yet. */
 fun PnrInfo.coachBerthSummary(): String? {
-    val first = passengers.firstOrNull { !it.coach.isNullOrBlank() } ?: return null
+    val first = passengers.firstOrNull {
+        !it.coach.isNullOrBlank()
+    } ?: return null
+
     val berth = first.berth
-    return if (berth.isNullOrBlank()) first.coach else "${first.coach} / $berth"
+
+    return if (berth.isNullOrBlank()) {
+        first.coach
+    } else {
+        "${first.coach} / $berth"
+    }
 }

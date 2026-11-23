@@ -1,46 +1,30 @@
+
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.first.pnrenq.ui.home
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.first.pnrenq.data.mock.MockPnrData
 import com.first.pnrenq.domain.model.PnrInfo
-import com.first.pnrenq.domain.model.coachBerthSummary
+import com.first.pnrenq.ui.common.JourneyTimeline
 import com.first.pnrenq.ui.common.StatusChip
-import com.first.pnrenq.ui.common.formatJourneyDate
+import com.first.pnrenq.ui.common.availableText
 import com.first.pnrenq.ui.common.formatLastChecked
 import com.first.pnrenq.ui.theme.PnrenqTheme
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.foundation.layout.Box
-
 
 @Composable
 fun HomeScreen(
@@ -51,27 +35,48 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
     loadError: String? = null,
-    onRetry: () -> Unit = {},
+    onRetry: () -> Unit = {}
 ) {
     Scaffold(
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text("PNR enq") },
-                actions = { TextButton(onClick = onSettingsClick) { Text("Settings") } }
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "PNR",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                actions = {
+                    TextButton(onClick = onSettingsClick) {
+                        Text("Themes")
+                    }
+                }
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = onAddClick) { Text("Add PNR") }
+            if (pnrs.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    onClick = onAddClick,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Text(
+                        "+  Add PNR",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
         }
-    ) { innerPadding ->
-
+    ) { paddingValues ->
         when {
             isLoading && pnrs.isEmpty() -> {
                 Box(
                     modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize(),
+                        .fillMaxSize()
+                        .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -79,57 +84,53 @@ fun HomeScreen(
             }
 
             loadError != null && pnrs.isEmpty() -> {
-                Column(
+                ErrorState(
+                    message = loadError,
+                    onRetry = onRetry,
                     modifier = Modifier
-                        .padding(innerPadding)
                         .fillMaxSize()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        "Couldn't load saved PNRs",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        loadError,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(onClick = onRetry) {
-                        Text("Retry")
-                    }
-                }
+                        .padding(paddingValues)
+                )
             }
 
             pnrs.isEmpty() -> {
                 EmptyState(
+                    onAddClick = onAddClick,
                     modifier = Modifier
-                        .padding(innerPadding)
                         .fillMaxSize()
+                        .padding(paddingValues)
                 )
             }
 
             else -> {
                 LazyColumn(
                     modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize(),
+                        .fillMaxSize()
+                        .padding(paddingValues),
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         end = 16.dp,
-                        top = 8.dp,
-                        bottom = 96.dp
+                        top = 14.dp,
+                        bottom = 110.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    items(pnrs, key = { it.pnrNumber }) { pnr ->
-                        PnrCard(
+                    item {
+                        Text(
+                            text = "Your tickets",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(
+                                bottom = 2.dp
+                            )
+                        )
+                    }
+
+                    items(
+                        items = pnrs,
+                        key = { it.pnrNumber }
+                    ) { pnr ->
+                        ModernPnrCard(
                             pnr = pnr,
                             onClick = {
                                 onPnrClick(pnr.pnrNumber)
@@ -139,54 +140,131 @@ fun HomeScreen(
                 }
             }
         }
-
     }
 }
 
 @Composable
-private fun PnrCard(pnr: PnrInfo, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
+private fun ModernPnrCard(
+    pnr: PnrInfo,
+    onClick: () -> Unit
+) {
+    val details = pnr.details
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor =
+                MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(
+                alpha = 0.65f
+            )
+        )
+    ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
                     Text(
-                        text = pnr.trainName,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = pnr.trainNumber,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "TRAIN ${pnr.trainNumber}",
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 7.dp
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color =
+                            MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                StatusChip(status = pnr.currentStatus)
+
+                if (availableText(pnr.currentStatus) != null) {
+                    Spacer(Modifier.width(8.dp))
+
+                    StatusChip(
+                        status = pnr.currentStatus
+                    )
+                }
             }
+
             Text(
-                text = "${pnr.fromStation} \u2192 ${pnr.toStation}",
-                style = MaterialTheme.typography.bodyLarge
+                text = pnr.trainName,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = formatJourneyDate(pnr.journeyDate),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            pnr.coachBerthSummary()?.let { summary ->
+
+            availableText(details.journeyClass)?.let {
                 Text(
-                    text = "Coach / berth: $summary",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "Class $it",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+
+            JourneyTimeline(
+                fromStation = pnr.fromStation,
+                toStation = pnr.toStation,
+                journeyDate = pnr.journeyDate,
+                departureTime = details.departureTime,
+                arrivalDate = details.arrivalDate,
+                arrivalTime = details.arrivalTime,
+                duration = details.duration,
+                compact = true
+            )
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "PNR NUMBER",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Text(
+                        text = pnr.pnrNumber,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Text(
+                    text = "View details  ›",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
             Text(
-                text = "Last checked: ${formatLastChecked(pnr.lastCheckedAtMillis)}",
+                text = "Updated ${
+                    formatLastChecked(pnr.lastCheckedAtMillis)
+                }",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -195,23 +273,93 @@ private fun PnrCard(pnr: PnrInfo, onClick: () -> Unit, modifier: Modifier = Modi
 }
 
 @Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
+private fun EmptyState(
+    onAddClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(
-        modifier = modifier.padding(32.dp),
+        modifier = modifier.padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Box(
+                modifier = Modifier.size(96.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "🚆",
+                    style = MaterialTheme.typography.headlineLarge
+                )
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
         Text(
-            text = "No saved PNRs yet",
-            style = MaterialTheme.typography.titleMedium
+            text = "Your journeys start here",
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(Modifier.height(10.dp))
+
         Text(
-            text = "Tap Add PNR to check your first one.",
+            text = "Add a PNR to view your train and reservation status.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
+
+        Spacer(Modifier.height(24.dp))
+
+        Button(
+            onClick = onAddClick,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "+  Add your first PNR",
+                modifier = Modifier.padding(vertical = 5.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Couldn't load saved PNRs",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(Modifier.height(22.dp))
+
+        Button(onClick = onRetry) {
+            Text("Try again")
+        }
     }
 }
 
@@ -219,14 +367,22 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 @Composable
 private fun HomeScreenPreview() {
     PnrenqTheme {
-        HomeScreen(pnrs = MockPnrData.sample(), onAddClick = {}, onPnrClick = {})
+        HomeScreen(
+            pnrs = MockPnrData.sample(),
+            onAddClick = {},
+            onPnrClick = {}
+        )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun HomeScreenEmptyPreview() {
+private fun EmptyHomePreview() {
     PnrenqTheme {
-        HomeScreen(pnrs = emptyList(), onAddClick = {}, onPnrClick = {})
+        HomeScreen(
+            pnrs = emptyList(),
+            onAddClick = {},
+            onPnrClick = {}
+        )
     }
 }

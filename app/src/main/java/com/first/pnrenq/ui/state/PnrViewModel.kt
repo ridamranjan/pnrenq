@@ -8,7 +8,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.first.pnrenq.data.local.LocalPnrRepository
 import com.first.pnrenq.data.local.PnrDatabaseProvider
-import com.first.pnrenq.data.mock.MockPnrChecker
+import com.first.pnrenq.data.remote.RemotePnrChecker
+import com.first.pnrenq.data.remote.PnrCheckException
 import com.first.pnrenq.domain.operation.PnrOperationCoordinator
 import com.first.pnrenq.domain.validation.isValidPnr
 import kotlinx.coroutines.CancellationException
@@ -105,10 +106,13 @@ class PnrViewModel(application: Application) :
         }
     }
 
+
     fun checkPnr(pnr: String) {
         if (!isValidPnr(pnr)) {
             _state.update {
-                it.copy(addError = "Enter a valid 10-digit PNR")
+                it.copy(
+                    addError = "Enter a valid 10-digit PNR"
+                )
             }
             return
         }
@@ -127,25 +131,36 @@ class PnrViewModel(application: Application) :
             var saved = false
 
             try {
-                delay(800)
+                // Reuse a saved record without making another API call.
+                val existing = repository.getByPnr(pnr)
 
-                val result = withContext(Dispatchers.Default) {
-                    MockPnrChecker.simulatedCheck(pnr)
-                }
+                if (existing != null) {
+                    saved = true
+                } else {
+                    // Live request through Cloudflare.
+                    val result = RemotePnrChecker.check(pnr)
 
-                withContext(Dispatchers.IO) {
+                    // Save only a successfully validated result.
                     repository.save(result)
+                    saved = true
                 }
 
-                saved = true
             } catch (e: CancellationException) {
                 throw e
+
+            } catch (e: PnrCheckException) {
+                _state.update {
+                    it.copy(addError = e.message)
+                }
+
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
-                        addError = "Unable to save PNR. Please try again."
+                        addError =
+                            "Unable to save PNR. Please try again."
                     )
                 }
+
             } finally {
                 coordinator.release(pnr)
 
@@ -164,6 +179,8 @@ class PnrViewModel(application: Application) :
         }
     }
 
+
+
     fun refreshPnr(pnr: String) {
         if (!isValidPnr(pnr)) return
         if (!coordinator.tryAcquire(pnr)) return
@@ -178,53 +195,51 @@ class PnrViewModel(application: Application) :
 
         viewModelScope.launch {
             var message =
-                "Couldn't refresh. Your saved result is unchanged"
-
-            var completed = false
+                "Couldn't refresh. Your saved result is unchanged."
 
             try {
-                delay(800)
+                // Exactly one user-initiated live request.
+                val result = RemotePnrChecker.check(pnr)
 
-                // Prototype-only failure simulation.
-                if (!pnr.endsWith("0")) {
-                    val result = withContext(Dispatchers.Default) {
-                        MockPnrChecker.simulatedCheck(pnr)
-                    }
-
-                    val updated = withContext(Dispatchers.IO) {
-                        if (repository.getByPnr(pnr) != null) {
-                            repository.save(result)
-                            true
-                        } else {
-                            false
-                        }
-                    }
-
-                    if (updated) {
-                        message = "Status updated"
+                val updated = withContext(Dispatchers.IO) {
+                    if (repository.getByPnr(pnr) != null) {
+                        repository.save(result)
+                        true
+                    } else {
+                        false
                     }
                 }
 
-                completed = true
+                message = if (updated) {
+                    "PNR status updated successfully."
+                } else {
+                    "Saved PNR was not found."
+                }
+
             } catch (e: CancellationException) {
                 throw e
+
+            } catch (e: PnrCheckException) {
+                message = e.message
+
             } catch (e: Exception) {
-                completed = true
+                message =
+                    "Unable to refresh. Your saved result is unchanged."
+
             } finally {
                 coordinator.release(pnr)
 
                 _state.update {
                     it.copy(
                         refreshingPnrs = it.refreshingPnrs - pnr,
-                        detailsMessage =
-                            if (completed) message else it.detailsMessage,
-                        messagePnr =
-                            if (completed) pnr else it.messagePnr
+                        detailsMessage = message,
+                        messagePnr = pnr
                     )
                 }
             }
         }
     }
+
 
     fun deletePnr(pnr: String) {
         if (!isValidPnr(pnr)) return

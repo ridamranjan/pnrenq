@@ -17,5 +17,6 @@ data class SavedPnrEntity(
     val currentStatus: String,
     val chartStatus: String?,
     val lastCheckedAtMillis: Long,
-    val createdAtMillis: Long
+    val createdAtMillis: Long,
+    val detailsJson: String? = null
 )

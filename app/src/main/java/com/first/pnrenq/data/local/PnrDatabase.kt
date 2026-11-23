@@ -9,7 +9,7 @@ import androidx.room.RoomDatabase
         SavedPnrEntity::class,
         PassengerEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class PnrDatabase : RoomDatabase() {
