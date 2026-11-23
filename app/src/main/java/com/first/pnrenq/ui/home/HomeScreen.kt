@@ -54,7 +54,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /* =========================================================
-   DATE / TIME SORTING
+   DATE AND TIME SORTING
 ========================================================= */
 
 private val shortDateFormat =
@@ -75,13 +75,9 @@ private fun isPastJourney(
     )
 
     return when {
-
         date.isBefore(now.toLocalDate()) -> true
-
         date.isAfter(now.toLocalDate()) -> false
-
         departure == null -> false
-
         else -> departure.isBefore(now.toLocalTime())
     }
 }
@@ -139,7 +135,6 @@ fun HomeScreen(
     }
 
     LaunchedEffect(homeMessage) {
-
         if (homeMessage != null) {
             onHomeMessageShown()
 
@@ -163,26 +158,253 @@ fun HomeScreen(
         }
         .sortedWith(pastOrder)
 
-    Scaffold(
-        modifier = modifier,
+    /*
+     Box allows two independent bottom buttons:
+     Settings on the left, Add PNR on the right.
+    */
 
-        containerColor = Color.Transparent,
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
 
-        /* ---------- Compact safe header ---------- */
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
 
-        topBar = {
-            CompactHomeHeader(
-                onSettingsClick = onSettingsClick
+            containerColor = Color.Transparent,
+
+            topBar = {
+                CompactHomeHeader()
+            },
+
+            snackbarHost = {
+                SnackbarHost(snackbarHostState)
+            }
+        ) { padding ->
+
+            when {
+
+                isLoading && pnrs.isEmpty() -> {
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+
+                        contentAlignment =
+                            Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                loadError != null && pnrs.isEmpty() -> {
+
+                    HomeErrorState(
+                        message = loadError,
+                        onRetry = onRetry,
+
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                    )
+                }
+
+                pnrs.isEmpty() -> {
+
+                    HomeEmptyState(
+                        onAddClick = onAddClick,
+
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                    )
+                }
+
+                else -> {
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 6.dp,
+
+                            // Prevent bottom buttons from
+                            // covering saved PNR cards.
+                            bottom = 132.dp
+                        ),
+
+                        verticalArrangement =
+                            Arrangement.spacedBy(10.dp)
+                    ) {
+
+                        /* ---------- Upcoming ---------- */
+
+                        if (upcoming.isNotEmpty()) {
+
+                            item(
+                                key = "upcoming_heading"
+                            ) {
+                                SectionHeading(
+                                    title = "Upcoming journeys",
+                                    count = upcoming.size
+                                )
+                            }
+
+                            items(
+                                items = upcoming,
+                                key = {
+                                    it.pnrNumber
+                                }
+                            ) { pnr ->
+
+                                HomePnrCard(
+                                    pnr = pnr,
+
+                                    isDeleting =
+                                        pnr.pnrNumber in deletingPnrs,
+
+                                    onClick = {
+                                        if (
+                                            pnr.pnrNumber !in deletingPnrs
+                                        ) {
+                                            onPnrClick(
+                                                pnr.pnrNumber
+                                            )
+                                        }
+                                    },
+
+                                    onDeleteClick = {
+                                        pnrToDelete =
+                                            pnr.pnrNumber
+                                    },
+
+                                    modifier = Modifier.animateItem(
+                                        fadeInSpec = tween(220),
+
+                                        placementSpec = spring(
+                                            dampingRatio =
+                                                Spring.DampingRatioNoBouncy,
+
+                                            stiffness =
+                                                Spring.StiffnessMediumLow
+                                        ),
+
+                                        fadeOutSpec = tween(180)
+                                    )
+                                )
+                            }
+                        }
+
+                        /* ---------- Past ---------- */
+
+                        if (past.isNotEmpty()) {
+
+                            item(
+                                key = "past_heading"
+                            ) {
+
+                                Spacer(
+                                    Modifier.height(8.dp)
+                                )
+
+                                SectionHeading(
+                                    title = "Past journeys",
+                                    count = past.size
+                                )
+                            }
+
+                            items(
+                                items = past,
+                                key = {
+                                    it.pnrNumber
+                                }
+                            ) { pnr ->
+
+                                HomePnrCard(
+                                    pnr = pnr,
+
+                                    isDeleting =
+                                        pnr.pnrNumber in deletingPnrs,
+
+                                    onClick = {
+                                        if (
+                                            pnr.pnrNumber !in deletingPnrs
+                                        ) {
+                                            onPnrClick(
+                                                pnr.pnrNumber
+                                            )
+                                        }
+                                    },
+
+                                    onDeleteClick = {
+                                        pnrToDelete =
+                                            pnr.pnrNumber
+                                    },
+
+                                    modifier = Modifier.animateItem(
+                                        fadeInSpec = tween(220),
+
+                                        placementSpec = spring(
+                                            dampingRatio =
+                                                Spring.DampingRatioNoBouncy,
+
+                                            stiffness =
+                                                Spring.StiffnessMediumLow
+                                        ),
+
+                                        fadeOutSpec = tween(180)
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /* =================================================
+           BOTTOM ACTION BUTTONS
+
+           Settings: bottom-left, unchanged 48dp size.
+           Add PNR: bottom-right.
+
+           navigationBarsPadding prevents overlap with
+           Android's bottom gesture/navigation area.
+        ================================================= */
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = 16.dp
+                ),
+
+            horizontalArrangement =
+                Arrangement.SpaceBetween,
+
+            verticalAlignment =
+                Alignment.CenterVertically
+        ) {
+
+            /* ---------- Settings button ---------- */
+
+            BottomSettingsButton(
+                onClick = onSettingsClick
             )
-        },
 
-        snackbarHost = {
-            SnackbarHost(snackbarHostState)
-        },
+            Spacer(
+                Modifier.weight(1f)
+            )
 
-        /* ---------- Add PNR button ---------- */
-
-        floatingActionButton = {
+            /* ---------- Add PNR button ---------- */
 
             if (pnrs.isNotEmpty()) {
 
@@ -205,210 +427,24 @@ fun HomeScreen(
 
                         contentDescription = null,
 
-                        tint = scheme.onPrimaryContainer,
+                        tint =
+                            scheme.onPrimaryContainer,
 
                         modifier = Modifier.size(20.dp)
                     )
 
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(
+                        Modifier.width(8.dp)
+                    )
 
                     Text(
                         text = "Add PNR",
 
-                        color = scheme.onPrimaryContainer,
+                        color =
+                            scheme.onPrimaryContainer,
 
                         fontWeight = FontWeight.Bold
                     )
-                }
-            }
-        }
-    ) { padding ->
-
-        when {
-
-            isLoading && pnrs.isEmpty() -> {
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            loadError != null && pnrs.isEmpty() -> {
-
-                HomeErrorState(
-                    message = loadError,
-                    onRetry = onRetry,
-
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                )
-            }
-
-            pnrs.isEmpty() -> {
-
-                HomeEmptyState(
-                    onAddClick = onAddClick,
-
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                )
-            }
-
-            else -> {
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-
-                    contentPadding = PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 6.dp,
-                        bottom = 110.dp
-                    ),
-
-                    verticalArrangement =
-                        Arrangement.spacedBy(10.dp)
-                ) {
-
-                    /* ---------- Upcoming journeys ---------- */
-
-                    if (upcoming.isNotEmpty()) {
-
-                        item(
-                            key = "upcoming_heading"
-                        ) {
-
-                            SectionHeading(
-                                title = "Upcoming journeys",
-                                count = upcoming.size
-                            )
-                        }
-
-                        items(
-                            items = upcoming,
-                            key = {
-                                it.pnrNumber
-                            }
-                        ) { pnr ->
-
-                            HomePnrCard(
-                                pnr = pnr,
-
-                                isDeleting =
-                                    pnr.pnrNumber in deletingPnrs,
-
-                                onClick = {
-                                    if (
-                                        pnr.pnrNumber !in deletingPnrs
-                                    ) {
-                                        onPnrClick(
-                                            pnr.pnrNumber
-                                        )
-                                    }
-                                },
-
-                                onDeleteClick = {
-                                    pnrToDelete =
-                                        pnr.pnrNumber
-                                },
-
-                                modifier = Modifier.animateItem(
-                                    fadeInSpec = tween(
-                                        durationMillis = 220
-                                    ),
-
-                                    placementSpec = spring(
-                                        dampingRatio =
-                                            Spring.DampingRatioNoBouncy,
-
-                                        stiffness =
-                                            Spring.StiffnessMediumLow
-                                    ),
-
-                                    fadeOutSpec = tween(
-                                        durationMillis = 180
-                                    )
-                                )
-                            )
-                        }
-                    }
-
-                    /* ---------- Past journeys ---------- */
-
-                    if (past.isNotEmpty()) {
-
-                        item(
-                            key = "past_heading"
-                        ) {
-
-                            Spacer(
-                                Modifier.height(8.dp)
-                            )
-
-                            SectionHeading(
-                                title = "Past journeys",
-                                count = past.size
-                            )
-                        }
-
-                        items(
-                            items = past,
-                            key = {
-                                it.pnrNumber
-                            }
-                        ) { pnr ->
-
-                            HomePnrCard(
-                                pnr = pnr,
-
-                                isDeleting =
-                                    pnr.pnrNumber in deletingPnrs,
-
-                                onClick = {
-                                    if (
-                                        pnr.pnrNumber !in deletingPnrs
-                                    ) {
-                                        onPnrClick(
-                                            pnr.pnrNumber
-                                        )
-                                    }
-                                },
-
-                                onDeleteClick = {
-                                    pnrToDelete =
-                                        pnr.pnrNumber
-                                },
-
-                                modifier = Modifier.animateItem(
-                                    fadeInSpec = tween(
-                                        durationMillis = 220
-                                    ),
-
-                                    placementSpec = spring(
-                                        dampingRatio =
-                                            Spring.DampingRatioNoBouncy,
-
-                                        stiffness =
-                                            Spring.StiffnessMediumLow
-                                    ),
-
-                                    fadeOutSpec = tween(
-                                        durationMillis = 180
-                                    )
-                                )
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -420,57 +456,47 @@ fun HomeScreen(
 
     pnrToDelete?.let { selectedPnr ->
 
-        val isDeleting =
+        val deleting =
             selectedPnr in deletingPnrs
 
         AlertDialog(
             onDismissRequest = {
-
-                if (!isDeleting) {
+                if (!deleting) {
                     pnrToDelete = null
                 }
             },
 
             title = {
-                Text(
-                    text = "Remove saved PNR?"
-                )
+                Text("Remove saved PNR?")
             },
 
             text = {
                 Text(
-                    text = "PNR $selectedPnr and its saved " +
+                    "PNR $selectedPnr and its saved " +
                             "journey details will be removed " +
                             "from this device."
                 )
             },
 
             confirmButton = {
-
                 TextButton(
-                    enabled = !isDeleting,
+                    enabled = !deleting,
 
                     onClick = {
                         pnrToDelete = null
-
-                        onDeletePnr(
-                            selectedPnr
-                        )
+                        onDeletePnr(selectedPnr)
                     }
                 ) {
-
                     Text(
                         text = "Delete",
-
                         color = scheme.error
                     )
                 }
             },
 
             dismissButton = {
-
                 TextButton(
-                    enabled = !isDeleting,
+                    enabled = !deleting,
 
                     onClick = {
                         pnrToDelete = null
@@ -484,20 +510,16 @@ fun HomeScreen(
 }
 
 /* =========================================================
-   SMALL HOME HEADER
+   PNR EXPERT HEADER
 
-   Critical fix:
-   statusBarsPadding() keeps the custom header below
-   Android's status bar and camera cutout.
+   The Settings button has been removed from here.
 
-   Old cards: 66dp
-   New cards: 48dp
+   Increased top padding moves the brand card farther
+   below the notification/status bar.
 ========================================================= */
 
 @Composable
-private fun CompactHomeHeader(
-    onSettingsClick: () -> Unit
-) {
+private fun CompactHomeHeader() {
 
     val scheme = MaterialTheme.colorScheme
 
@@ -509,28 +531,25 @@ private fun CompactHomeHeader(
         modifier = Modifier
             .fillMaxWidth()
 
-            // Prevent edge-to-edge status-bar overlap.
+            // Reserve Android status-bar space.
             .statusBarsPadding()
 
             .padding(
                 start = 16.dp,
                 end = 16.dp,
-                top = 5.dp,
-                bottom = 5.dp
+
+                // Increased from 5dp to 14dp.
+                top = 14.dp,
+
+                bottom = 8.dp
             ),
 
-        horizontalArrangement =
-            Arrangement.spacedBy(10.dp),
-
-        verticalAlignment =
-            Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically
     ) {
-
-        /* ---------- Compact PNR brand card ---------- */
 
         Surface(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .height(48.dp),
 
             shape = RoundedCornerShape(15.dp),
@@ -548,9 +567,7 @@ private fun CompactHomeHeader(
 
             border = BorderStroke(
                 1.dp,
-                scheme.primary.copy(
-                    alpha = 0.20f
-                )
+                scheme.primary.copy(alpha = 0.20f)
             )
         ) {
 
@@ -558,7 +575,7 @@ private fun CompactHomeHeader(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(
-                        horizontal = 13.dp,
+                        horizontal = 14.dp,
                         vertical = 4.dp
                     ),
 
@@ -594,7 +611,8 @@ private fun CompactHomeHeader(
 
                     lineHeight = 12.sp,
 
-                    color = scheme.onPrimaryContainer,
+                    color =
+                        scheme.onPrimaryContainer,
 
                     maxLines = 1,
 
@@ -602,46 +620,56 @@ private fun CompactHomeHeader(
                 )
             }
         }
+    }
+}
 
-        /* ---------- Compact settings card ---------- */
+/* =========================================================
+   BOTTOM-LEFT SETTINGS BUTTON
 
-        Surface(
-            modifier = Modifier.size(48.dp),
+   Exactly the same 48dp size as before.
+========================================================= */
 
-            shape = RoundedCornerShape(15.dp),
+@Composable
+private fun BottomSettingsButton(
+    onClick: () -> Unit
+) {
 
-            color = scheme.secondaryContainer,
+    val scheme = MaterialTheme.colorScheme
 
-            contentColor =
-                scheme.onSecondaryContainer,
+    Surface(
+        modifier = Modifier.size(48.dp),
 
-            border = BorderStroke(
-                1.dp,
-                scheme.secondary.copy(
-                    alpha = 0.20f
-                )
-            )
+        shape = RoundedCornerShape(15.dp),
+
+        color = scheme.secondaryContainer,
+
+        contentColor =
+            scheme.onSecondaryContainer,
+
+        border = BorderStroke(
+            1.dp,
+            scheme.secondary.copy(alpha = 0.20f)
+        )
+    ) {
+
+        IconButton(
+            onClick = onClick,
+
+            modifier = Modifier.fillMaxSize()
         ) {
 
-            IconButton(
-                onClick = onSettingsClick,
+            Icon(
+                painter = painterResource(
+                    R.drawable.ic_pnr_settings
+                ),
 
-                modifier = Modifier.fillMaxSize()
-            ) {
+                contentDescription = "Settings",
 
-                Icon(
-                    painter = painterResource(
-                        R.drawable.ic_pnr_settings
-                    ),
+                tint =
+                    scheme.onSecondaryContainer,
 
-                    contentDescription = "Settings",
-
-                    tint =
-                        scheme.onSecondaryContainer,
-
-                    modifier = Modifier.size(21.dp)
-                )
-            }
+                modifier = Modifier.size(21.dp)
+            )
         }
     }
 }
@@ -655,6 +683,8 @@ private fun SectionHeading(
     title: String,
     count: Int
 ) {
+
+    val scheme = MaterialTheme.colorScheme
 
     Row(
         modifier = Modifier
@@ -679,8 +709,7 @@ private fun SectionHeading(
 
             fontWeight = FontWeight.Bold,
 
-            color =
-                MaterialTheme.colorScheme.onBackground
+            color = scheme.onBackground
         )
 
         Text(
@@ -689,14 +718,13 @@ private fun SectionHeading(
             style =
                 MaterialTheme.typography.labelMedium,
 
-            color =
-                MaterialTheme.colorScheme.onBackground
+            color = scheme.onBackground
         )
     }
 }
 
 /* =========================================================
-   COMPACT PNR CARD
+   PNR CARD
 ========================================================= */
 
 @Composable
@@ -721,20 +749,14 @@ private fun HomePnrCard(
 
     val details = pnr.details
 
-    /* ---------- Departure ---------- */
-
     val departureText = listOfNotNull(
-        pnr.journeyDate.format(
-            shortDateFormat
-        ),
+        pnr.journeyDate.format(shortDateFormat),
 
         formatClockTime(
             details.departureTime,
             timeFormat
         )
     ).joinToString(" · ")
-
-    /* ---------- Arrival ---------- */
 
     val arrivalDate =
         availableText(
@@ -744,7 +766,6 @@ private fun HomePnrCard(
             try {
                 LocalDate.parse(it)
                     .format(shortDateFormat)
-
             } catch (_: Exception) {
                 null
             }
@@ -769,26 +790,22 @@ private fun HomePnrCard(
 
         enabled = !isDeleting,
 
-        modifier =
-            modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
 
-        shape =
-            RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(18.dp),
 
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    scheme.surfaceContainerLow.copy(
-                        alpha = if (gradient) {
-                            0.97f
-                        } else {
-                            1f
-                        }
-                    ),
+        colors = CardDefaults.cardColors(
+            containerColor =
+                scheme.surfaceContainerLow.copy(
+                    alpha = if (gradient) {
+                        0.97f
+                    } else {
+                        1f
+                    }
+                ),
 
-                contentColor =
-                    scheme.onSurface
-            ),
+            contentColor = scheme.onSurface
+        ),
 
         border = BorderStroke(
             1.dp,
@@ -806,7 +823,7 @@ private fun HomePnrCard(
                 Arrangement.spacedBy(9.dp)
         ) {
 
-            /* ---------- Train and action icons ---------- */
+            /* ---------- Train name and actions ---------- */
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -818,8 +835,7 @@ private fun HomePnrCard(
                 Text(
                     text = trainTitle,
 
-                    modifier =
-                        Modifier.weight(1f),
+                    modifier = Modifier.weight(1f),
 
                     style =
                         MaterialTheme.typography.labelLarge,
@@ -903,7 +919,7 @@ private fun HomePnrCard(
                 }
             }
 
-            /* ---------- Source / destination ---------- */
+            /* ---------- Stations ---------- */
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -915,13 +931,11 @@ private fun HomePnrCard(
                 StationLabel(
                     code = pnr.fromStation,
 
-                    dateAndTime =
-                        departureText,
+                    dateAndTime = departureText,
 
                     alignEnd = false,
 
-                    modifier =
-                        Modifier.weight(1f)
+                    modifier = Modifier.weight(1f)
                 )
 
                 Text(
@@ -934,29 +948,25 @@ private fun HomePnrCard(
                     style =
                         MaterialTheme.typography.titleLarge,
 
-                    color =
-                        scheme.onSurface
+                    color = scheme.onSurface
                 )
 
                 StationLabel(
                     code = pnr.toStation,
 
-                    dateAndTime =
-                        arrivalText,
+                    dateAndTime = arrivalText,
 
                     alignEnd = true,
 
-                    modifier =
-                        Modifier.weight(1f)
+                    modifier = Modifier.weight(1f)
                 )
             }
 
             HorizontalDivider(
-                color =
-                    scheme.outlineVariant
+                color = scheme.outlineVariant
             )
 
-            /* ---------- PNR / last check ---------- */
+            /* ---------- PNR and status ---------- */
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -998,8 +1008,7 @@ private fun HomePnrCard(
                         style =
                             MaterialTheme.typography.labelSmall,
 
-                        color =
-                            scheme.onSurfaceVariant,
+                        color = scheme.onSurfaceVariant,
 
                         maxLines = 1,
 
@@ -1011,9 +1020,7 @@ private fun HomePnrCard(
                     pnr.currentStatus
                 )?.let { status ->
 
-                    Spacer(
-                        Modifier.width(8.dp)
-                    )
+                    Spacer(Modifier.width(8.dp))
 
                     StatusChip(
                         status = status
@@ -1067,8 +1074,7 @@ private fun StationLabel(
 
             fontWeight = FontWeight.Bold,
 
-            color =
-                scheme.onSurface,
+            color = scheme.onSurface,
 
             maxLines = 1,
 
@@ -1083,8 +1089,7 @@ private fun StationLabel(
                 style =
                     MaterialTheme.typography.bodySmall,
 
-                color =
-                    scheme.onSurfaceVariant,
+                color = scheme.onSurfaceVariant,
 
                 textAlign = textAlignment,
 
@@ -1109,8 +1114,7 @@ private fun HomeEmptyState(
     Column(
         modifier = modifier.padding(28.dp),
 
-        verticalArrangement =
-            Arrangement.Center,
+        verticalArrangement = Arrangement.Center,
 
         horizontalAlignment =
             Alignment.CenterHorizontally
@@ -1118,14 +1122,11 @@ private fun HomeEmptyState(
 
         Text(
             text = "🚆",
-
             style =
                 MaterialTheme.typography.headlineLarge
         )
 
-        Spacer(
-            Modifier.height(18.dp)
-        )
+        Spacer(Modifier.height(18.dp))
 
         Text(
             text = "Your journeys start here",
@@ -1138,9 +1139,7 @@ private fun HomeEmptyState(
             textAlign = TextAlign.Center
         )
 
-        Spacer(
-            Modifier.height(10.dp)
-        )
+        Spacer(Modifier.height(10.dp))
 
         Text(
             text = "Add a PNR to save your journey " +
@@ -1154,15 +1153,12 @@ private fun HomeEmptyState(
             textAlign = TextAlign.Center
         )
 
-        Spacer(
-            Modifier.height(22.dp)
-        )
+        Spacer(Modifier.height(22.dp))
 
         Button(
             onClick = onAddClick,
 
-            modifier =
-                Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
         ) {
 
             Icon(
@@ -1175,13 +1171,9 @@ private fun HomeEmptyState(
                 modifier = Modifier.size(20.dp)
             )
 
-            Spacer(
-                Modifier.width(9.dp)
-            )
+            Spacer(Modifier.width(9.dp))
 
-            Text(
-                text = "Add your first PNR"
-            )
+            Text("Add your first PNR")
         }
     }
 }
@@ -1202,8 +1194,7 @@ private fun HomeErrorState(
     Column(
         modifier = modifier.padding(28.dp),
 
-        verticalArrangement =
-            Arrangement.Center,
+        verticalArrangement = Arrangement.Center,
 
         horizontalAlignment =
             Alignment.CenterHorizontally
@@ -1220,9 +1211,7 @@ private fun HomeErrorState(
             textAlign = TextAlign.Center
         )
 
-        Spacer(
-            Modifier.height(10.dp)
-        )
+        Spacer(Modifier.height(10.dp))
 
         Text(
             text = message,
@@ -1235,14 +1224,11 @@ private fun HomeErrorState(
             textAlign = TextAlign.Center
         )
 
-        Spacer(
-            Modifier.height(20.dp)
-        )
+        Spacer(Modifier.height(20.dp))
 
         Button(
             onClick = onRetry
         ) {
-
             Text("Try again")
         }
     }
