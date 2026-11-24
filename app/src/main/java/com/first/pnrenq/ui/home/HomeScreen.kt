@@ -107,7 +107,6 @@ private val pastOrder =
 /* =========================================================
    HOME SCREEN
 ========================================================= */
-
 @Composable
 fun HomeScreen(
     pnrs: List<PnrInfo>,
@@ -131,6 +130,16 @@ fun HomeScreen(
 
     var pnrToDelete by rememberSaveable {
         mutableStateOf<String?>(null)
+    }
+
+    // Both journey sections are expanded by default.
+
+    var upcomingExpanded by rememberSaveable {
+        mutableStateOf(true)
+    }
+
+    var pastExpanded by rememberSaveable {
+        mutableStateOf(true)
     }
 
     LaunchedEffect(homeMessage) {
@@ -176,35 +185,55 @@ fun HomeScreen(
 
             when {
 
+                /* =====================================
+                   INITIAL LOADING
+                ===================================== */
+
                 isLoading && pnrs.isEmpty() -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding),
-                        contentAlignment = Alignment.Center
+
+                        contentAlignment =
+                            Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
                 }
 
+                /* =====================================
+                   ERROR STATE
+                ===================================== */
+
                 loadError != null && pnrs.isEmpty() -> {
                     HomeErrorState(
                         message = loadError,
                         onRetry = onRetry,
+
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding)
                     )
                 }
 
+                /* =====================================
+                   EMPTY STATE
+                ===================================== */
+
                 pnrs.isEmpty() -> {
                     HomeEmptyState(
                         onAddClick = onAddClick,
+
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding)
                     )
                 }
+
+                /* =====================================
+                   SAVED JOURNEYS
+                ===================================== */
 
                 else -> {
                     LazyColumn(
@@ -223,6 +252,10 @@ fun HomeScreen(
                             Arrangement.spacedBy(10.dp)
                     ) {
 
+                        /* =============================
+                           UPCOMING JOURNEYS
+                        ============================= */
+
                         if (upcoming.isNotEmpty()) {
 
                             item(
@@ -230,76 +263,107 @@ fun HomeScreen(
                             ) {
                                 SectionHeading(
                                     title = "Upcoming journeys",
-                                    count = upcoming.size
-                                )
-                            }
 
-                            items(
-                                items = upcoming,
-                                key = {
-                                    it.pnrNumber
-                                }
-                            ) { pnr ->
+                                    count = upcoming.size,
 
-                                HomePnrCard(
-                                    pnr = pnr,
+                                    expanded = upcomingExpanded,
 
-                                    isDeleting =
-                                        pnr.pnrNumber in deletingPnrs,
-
-                                    onClick = {
-                                        onPnrClick(
-                                            pnr.pnrNumber
-                                        )
-                                    },
-
-                                    onDeleteClick = {
-                                        pnrToDelete =
-                                            pnr.pnrNumber
+                                    onToggle = {
+                                        upcomingExpanded =
+                                            !upcomingExpanded
                                     }
                                 )
                             }
+
+                            if (upcomingExpanded) {
+
+                                items(
+                                    items = upcoming,
+
+                                    key = {
+                                        it.pnrNumber
+                                    }
+                                ) { pnr ->
+
+                                    HomePnrCard(
+                                        pnr = pnr,
+
+                                        isDeleting =
+                                            pnr.pnrNumber in deletingPnrs,
+
+                                        onClick = {
+                                            onPnrClick(
+                                                pnr.pnrNumber
+                                            )
+                                        },
+
+                                        onDeleteClick = {
+                                            pnrToDelete =
+                                                pnr.pnrNumber
+                                        }
+                                    )
+                                }
+                            }
                         }
+
+                        /* =============================
+                           PAST JOURNEYS
+                        ============================= */
 
                         if (past.isNotEmpty()) {
 
                             item(
                                 key = "past_title"
                             ) {
-                                Spacer(
-                                    Modifier.height(8.dp)
-                                )
+
+                                if (upcoming.isNotEmpty()) {
+                                    Spacer(
+                                        Modifier.height(8.dp)
+                                    )
+                                }
 
                                 SectionHeading(
                                     title = "Past journeys",
-                                    count = past.size
+
+                                    count = past.size,
+
+                                    expanded = pastExpanded,
+
+                                    onToggle = {
+                                        pastExpanded =
+                                            !pastExpanded
+                                    }
                                 )
                             }
 
-                            items(
-                                items = past,
-                                key = {
-                                    it.pnrNumber
-                                }
-                            ) { pnr ->
+                            if (pastExpanded) {
 
-                                HomePnrCard(
-                                    pnr = pnr,
+                                items(
+                                    items = past,
 
-                                    isDeleting =
-                                        pnr.pnrNumber in deletingPnrs,
-
-                                    onClick = {
-                                        onPnrClick(
-                                            pnr.pnrNumber
-                                        )
-                                    },
-
-                                    onDeleteClick = {
-                                        pnrToDelete =
-                                            pnr.pnrNumber
+                                    key = {
+                                        it.pnrNumber
                                     }
-                                )
+                                ) { pnr ->
+
+                                    HomePnrCard(
+                                        pnr = pnr,
+
+                                        isDeleting =
+                                            pnr.pnrNumber in deletingPnrs,
+
+                                        onClick = {
+                                            onPnrClick(
+                                                pnr.pnrNumber
+                                            )
+                                        },
+
+                                        onDeleteClick = {
+                                            pnrToDelete =
+                                                pnr.pnrNumber
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -307,12 +371,9 @@ fun HomeScreen(
             }
         }
 
-        /* =================================================
-           BOTTOM BUTTONS
-
-           Settings: bottom-left, 48dp.
-           Add PNR: bottom-right, single gradient surface.
-        ================================================= */
+        /* =============================================
+           FIXED BOTTOM BUTTONS
+        ============================================= */
 
         Row(
             modifier = Modifier
@@ -325,7 +386,8 @@ fun HomeScreen(
                     bottom = 16.dp
                 ),
 
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment =
+                Alignment.CenterVertically
         ) {
 
             HomeSettingsButton(
@@ -345,9 +407,9 @@ fun HomeScreen(
         }
     }
 
-    /* =====================================================
+    /* =================================================
        DELETE CONFIRMATION
-    ===================================================== */
+    ================================================= */
 
     pnrToDelete?.let { selectedPnr ->
 
@@ -362,12 +424,14 @@ fun HomeScreen(
             },
 
             title = {
-                Text("Remove saved PNR?")
+                Text(
+                    text = "Remove saved PNR?"
+                )
             },
 
             text = {
                 Text(
-                    "PNR $selectedPnr and its saved journey " +
+                    text = "PNR $selectedPnr and its saved journey " +
                             "details will be removed from this device."
                 )
             },
@@ -396,7 +460,9 @@ fun HomeScreen(
                         pnrToDelete = null
                     }
                 ) {
-                    Text("Cancel")
+                    Text(
+                        text = "Cancel"
+                    )
                 }
             }
         )
@@ -610,47 +676,134 @@ private fun HomeAddPnrButton(
 /* =========================================================
    SECTION HEADING
 ========================================================= */
-
 @Composable
 private fun SectionHeading(
     title: String,
-    count: Int
+    count: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit
 ) {
-
     val scheme = MaterialTheme.colorScheme
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                top = 5.dp,
-                bottom = 3.dp
-            ),
+    Card(
+        modifier = Modifier.fillMaxWidth(),
 
-        horizontalArrangement =
-            Arrangement.SpaceBetween,
+        shape = RoundedCornerShape(20.dp),
 
-        verticalAlignment =
-            Alignment.CenterVertically
+        colors = CardDefaults.cardColors(
+            containerColor = scheme.surfaceContainerLow,
+            contentColor = scheme.onSurface
+        ),
+
+        border = BorderStroke(
+            width = 1.dp,
+
+            color = if (expanded) {
+                scheme.primary.copy(alpha = 0.45f)
+            } else {
+                scheme.outlineVariant
+            }
+        )
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = if (expanded) {
+                        "Collapse $title"
+                    } else {
+                        "Expand $title"
+                    },
+                    onClick = onToggle
+                )
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 14.dp
+                ),
 
-        Text(
-            text = title,
-            style =
-                MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = scheme.onBackground
-        )
+            verticalAlignment =
+                Alignment.CenterVertically,
 
-        Text(
-            text = count.toString(),
-            style =
-                MaterialTheme.typography.labelMedium,
-            color = scheme.onBackground
-        )
+            horizontalArrangement =
+                Arrangement.spacedBy(12.dp)
+        ) {
+
+            /* =====================================
+               SECTION TITLE
+            ===================================== */
+
+            Text(
+                text = title,
+
+                modifier = Modifier.weight(1f),
+
+                style =
+                    MaterialTheme.typography.titleMedium,
+
+                fontWeight = FontWeight.Bold,
+
+                color = scheme.onSurface
+            )
+
+            /* =====================================
+               JOURNEY COUNT BUBBLE
+            ===================================== */
+
+            Surface(
+                shape = RoundedCornerShape(50),
+
+                color = scheme.primaryContainer,
+
+                contentColor =
+                    scheme.onPrimaryContainer,
+
+                tonalElevation = 0.dp,
+
+                shadowElevation = 0.dp
+            ) {
+                Text(
+                    text = count.toString(),
+
+                    modifier = Modifier.padding(
+                        horizontal = 11.dp,
+                        vertical = 5.dp
+                    ),
+
+                    style =
+                        MaterialTheme.typography.labelMedium,
+
+                    fontWeight = FontWeight.Bold,
+
+                    color = scheme.onPrimaryContainer,
+
+                    maxLines = 1
+                )
+            }
+
+            /* =====================================
+               EXPAND / COLLAPSE ARROW
+
+               Same symbols as Settings dropdown.
+            ===================================== */
+
+            Text(
+                text = if (expanded) {
+                    "▴"
+                } else {
+                    "▾"
+                },
+
+                style =
+                    MaterialTheme.typography.headlineSmall,
+
+                color = scheme.primary,
+
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }
-
 /* =========================================================
    SAVED PNR CARD — UNCHANGED SOLID BACKGROUND
 ========================================================= */
