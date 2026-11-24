@@ -36,6 +36,7 @@ import com.first.pnrenq.domain.model.PnrInfo
 import com.first.pnrenq.ui.common.JourneyTimeline
 import com.first.pnrenq.ui.common.PnrBackButton
 import com.first.pnrenq.ui.common.availableText
+import com.first.pnrenq.ui.common.PnrNumberBubble
 import com.first.pnrenq.ui.common.formatArrivalDate
 import com.first.pnrenq.ui.common.formatLastChecked
 import com.first.pnrenq.ui.theme.LocalPnrTimeFormat
@@ -210,7 +211,6 @@ fun DetailsScreen(
 /* =========================================================
    TRAIN SUMMARY — GRADIENT ACCENT SURFACE
 ========================================================= */
-
 @Composable
 private fun TrainSummaryCard(
     pnr: PnrInfo,
@@ -223,42 +223,66 @@ private fun TrainSummaryCard(
 
     PnrAccentSurface(
         modifier = Modifier.fillMaxWidth(),
+
         backgroundColor = scheme.primaryContainer,
         foregroundColor = scheme.onPrimaryContainer,
+
         shape = RoundedCornerShape(25.dp),
+
         strength = 1.15f,
+
         border = BorderStroke(
             1.dp,
             scheme.primary.copy(alpha = 0.24f)
         )
     ) {
+
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+
+            verticalArrangement =
+                Arrangement.spacedBy(12.dp)
         ) {
+
+            /* =====================================
+               TRAIN NUMBER AND ACTION BUTTONS
+            ===================================== */
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
+
                 Surface(
                     shape = RoundedCornerShape(10.dp),
+
                     color = scheme.onPrimaryContainer.copy(
                         alpha = 0.10f
                     )
                 ) {
+
                     Text(
                         text = "TRAIN ${pnr.trainNumber}",
+
                         modifier = Modifier.padding(
                             horizontal = 12.dp,
                             vertical = 7.dp
                         ),
-                        style = MaterialTheme.typography.labelMedium,
+
+                        style =
+                            MaterialTheme.typography.labelMedium,
+
                         fontWeight = FontWeight.Bold,
+
                         color = scheme.onPrimaryContainer
                     )
                 }
 
-                Spacer(Modifier.weight(1f))
+                Spacer(
+                    Modifier.weight(1f)
+                )
 
                 TrainActionIcon(
                     icon = R.drawable.ic_pnr_refresh,
@@ -268,7 +292,9 @@ private fun TrainSummaryCard(
                     onClick = onRefresh
                 )
 
-                Spacer(Modifier.width(5.dp))
+                Spacer(
+                    Modifier.width(5.dp)
+                )
 
                 TrainActionIcon(
                     icon = R.drawable.ic_pnr_delete,
@@ -279,28 +305,51 @@ private fun TrainSummaryCard(
                 )
             }
 
+            /* =====================================
+               TRAIN NAME
+            ===================================== */
+
             Text(
                 text = pnr.trainName,
-                style = MaterialTheme.typography.headlineSmall,
+
+                style =
+                    MaterialTheme.typography.headlineSmall,
+
                 fontWeight = FontWeight.Bold,
                 color = scheme.onPrimaryContainer,
                 maxLines = 2
             )
 
+            /* =====================================
+               PNR NUMBER BUBBLE AND COPY BUTTON
+            ===================================== */
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
-                Text(
-                    text = "PNR ${pnr.pnrNumber}",
+
+                Box(
                     modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = scheme.onPrimaryContainer
+
+                    contentAlignment = Alignment.CenterStart
+                ) {
+
+                    PnrNumberBubble(
+                        pnrNumber = pnr.pnrNumber,
+                        emphasized = true
+                    )
+                }
+
+                Spacer(
+                    Modifier.width(8.dp)
                 )
 
                 IconButton(
                     onClick = {
+
                         val clipboard =
                             context.getSystemService(
                                 Context.CLIPBOARD_SERVICE
@@ -314,12 +363,16 @@ private fun TrainSummaryCard(
                         )
                     }
                 ) {
+
                     Icon(
                         painter = painterResource(
                             R.drawable.ic_pnr_copy
                         ),
+
                         contentDescription = "Copy PNR",
+
                         tint = scheme.onPrimaryContainer,
+
                         modifier = Modifier.size(21.dp)
                     )
                 }
@@ -331,6 +384,10 @@ private fun TrainSummaryCard(
                 )
             )
 
+            /* =====================================
+               JOURNEY TIMELINE
+            ===================================== */
+
             JourneyTimeline(
                 fromStation = pnr.fromStation,
                 toStation = pnr.toStation,
@@ -341,7 +398,12 @@ private fun TrainSummaryCard(
                 duration = pnr.details.duration
             )
 
+            /* =====================================
+               REFRESH PROGRESS
+            ===================================== */
+
             if (isRefreshing) {
+
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -571,7 +633,6 @@ private fun currentStatusColor(): Color {
         Color(0xFF86EFAC)
     }
 }
-
 @Composable
 private fun PassengerListCard(
     passengers: List<PassengerStatus>
@@ -621,8 +682,12 @@ private fun PassengerListCard(
             }
 
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement =
-                    Arrangement.spacedBy(12.dp),
+                    Arrangement.spacedBy(
+                        12.dp,
+                        Alignment.End
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showBookingLegend) {

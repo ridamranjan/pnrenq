@@ -1,4 +1,3 @@
-
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.first.pnrenq.ui.settings
@@ -317,52 +316,75 @@ fun SettingsScreen(
                 color = scheme.onBackground
             )
 
-            /* =========================================
-               NEW: SUPPORT & LEGAL
-            ========================================= */
+            /* -----------------------------------------
+               SUPPORT & LEGAL — DROPDOWN
+            ----------------------------------------- */
 
-            HorizontalDivider(
-                color = scheme.outlineVariant
-            )
+            SettingsDropdownSection(
+                title = "Support & legal",
 
-            Column(
-                verticalArrangement =
-                    Arrangement.spacedBy(6.dp)
+                selectedTitle = "Help & information",
+
+                selectedDescription =
+                    "Privacy, policies and project support",
+
+                expanded =
+                    expandedSection == "support_legal",
+
+                onToggle = {
+                    expandedSection =
+                        if (expandedSection == "support_legal") {
+                            null
+                        } else {
+                            "support_legal"
+                        }
+                }
             ) {
-                Text(
-                    text = "Support & legal",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = scheme.onBackground
+
+                SettingsLinkRow(
+                    title = "Policies & Legal",
+                    description =
+                        "Privacy policy, terms and disclaimer",
+                    symbol = "›",
+                    onClick = {
+                        onPoliciesClick()
+                    }
                 )
 
-                Text(
-                    text = "Privacy, policies and project support",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = scheme.onBackground
+                HorizontalDivider(
+                    modifier = Modifier.padding(
+                        horizontal = 16.dp
+                    ),
+                    color = scheme.outlineVariant
+                )
+
+                SettingsLinkRow(
+                    title = "Report a Bug",
+                    description =
+                        "Open the GitHub issue tracker",
+                    symbol = "↗",
+                    onClick = {
+                        onReportBug()
+                    }
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(
+                        horizontal = 16.dp
+                    ),
+                    color = scheme.outlineVariant
+                )
+
+                SettingsLinkRow(
+                    title = "Source Code & Licenses",
+                    description =
+                        "View the project and MIT License",
+                    symbol = "↗",
+                    onClick = {
+                        onViewSource()
+                    }
                 )
             }
-
-            SettingsLinkCard(
-                title = "Policies & Legal",
-                description = "Privacy policy, terms and disclaimer",
-                symbol = "›",
-                onClick = onPoliciesClick
-            )
-
-            SettingsLinkCard(
-                title = "Report a Bug",
-                description = "Open the GitHub issue tracker",
-                symbol = "↗",
-                onClick = onReportBug
-            )
-
-            SettingsLinkCard(
-                title = "Source Code & Licenses",
-                description = "View the project and MIT License",
-                symbol = "↗",
-                onClick = onViewSource
-            )
 
             Spacer(Modifier.height(16.dp))
         }
@@ -370,11 +392,11 @@ fun SettingsScreen(
 }
 
 /* =========================================================
-   NEW: SUPPORT / LEGAL ACTION CARD
+   SUPPORT / LEGAL ACTION ROW
 ========================================================= */
 
 @Composable
-private fun SettingsLinkCard(
+private fun SettingsLinkRow(
     title: String,
     description: String,
     symbol: String,
@@ -382,61 +404,52 @@ private fun SettingsLinkCard(
 ) {
     val scheme = MaterialTheme.colorScheme
 
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-
-        colors = CardDefaults.cardColors(
-            containerColor = scheme.surfaceContainerLow,
-            contentColor = scheme.onSurface
-        ),
-
-        border = BorderStroke(
-            1.dp,
-            scheme.outlineVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(
-                horizontal = 17.dp,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(
+                horizontal = 16.dp,
                 vertical = 16.dp
             ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement =
-                Arrangement.spacedBy(12.dp)
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement =
-                    Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = scheme.onSurface
-                )
 
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = scheme.onSurfaceVariant
-                )
-            }
+        verticalAlignment = Alignment.CenterVertically,
+
+        horizontalArrangement =
+            Arrangement.spacedBy(12.dp)
+    ) {
+
+        Column(
+            modifier = Modifier.weight(1f),
+
+            verticalArrangement =
+                Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = scheme.onSurface
+            )
 
             Text(
-                text = symbol,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = scheme.primary
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant
             )
         }
+
+        Text(
+            text = symbol,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = scheme.primary
+        )
     }
 }
 
 /* =========================================================
-   APPEARANCE / PALETTE DROPDOWN
+   SHARED SETTINGS DROPDOWN
 ========================================================= */
 
 @Composable
@@ -478,6 +491,7 @@ private fun SettingsDropdownSection(
                     .padding(16.dp),
 
                 verticalAlignment = Alignment.CenterVertically,
+
                 horizontalArrangement =
                     Arrangement.spacedBy(12.dp)
             ) {
@@ -485,6 +499,7 @@ private fun SettingsDropdownSection(
 
                 Column(
                     modifier = Modifier.weight(1f),
+
                     verticalArrangement =
                         Arrangement.spacedBy(4.dp)
                 ) {
@@ -600,6 +615,7 @@ private fun SettingsOptionRow(
                 ),
 
             verticalAlignment = Alignment.CenterVertically,
+
             horizontalArrangement =
                 Arrangement.spacedBy(12.dp)
         ) {
@@ -607,6 +623,7 @@ private fun SettingsOptionRow(
 
             Column(
                 modifier = Modifier.weight(1f),
+
                 verticalArrangement =
                     Arrangement.spacedBy(4.dp)
             ) {
@@ -649,7 +666,7 @@ private fun SettingsOptionRow(
 }
 
 /* =========================================================
-   LIVE PREVIEW — PRESERVED
+   LIVE PREVIEW
 ========================================================= */
 
 @Composable
@@ -672,6 +689,7 @@ private fun ThemePreviewCard(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
+
             verticalArrangement =
                 Arrangement.spacedBy(12.dp)
         ) {
@@ -693,6 +711,7 @@ private fun ThemePreviewCard(
                 ) {
                     Column(
                         modifier = Modifier.padding(14.dp),
+
                         verticalArrangement =
                             Arrangement.spacedBy(8.dp)
                     ) {
@@ -703,12 +722,15 @@ private fun ThemePreviewCard(
                         ) {
                             Text(
                                 text = "PNR EXPERT",
+
                                 modifier = Modifier.padding(
                                     horizontal = 12.dp,
                                     vertical = 7.dp
                                 ),
+
                                 style =
                                     MaterialTheme.typography.titleMedium,
+
                                 fontWeight = FontWeight.Bold,
                                 color = scheme.onSurface
                             )
@@ -722,9 +744,12 @@ private fun ThemePreviewCard(
                             Text(
                                 text = "${settings.palette.title} · " +
                                         settings.style.title,
+
                                 modifier = Modifier.padding(9.dp),
+
                                 style =
                                     MaterialTheme.typography.labelSmall,
+
                                 color = scheme.onSurface
                             )
                         }
@@ -742,7 +767,7 @@ private fun ThemePreviewCard(
 }
 
 /* =========================================================
-   PALETTE / STYLE PREVIEW — PRESERVED
+   PALETTE PREVIEW
 ========================================================= */
 
 @Composable
@@ -765,6 +790,10 @@ private fun PalettePreview(
             )
     )
 }
+
+/* =========================================================
+   STYLE PREVIEW
+========================================================= */
 
 @Composable
 private fun StylePreview(

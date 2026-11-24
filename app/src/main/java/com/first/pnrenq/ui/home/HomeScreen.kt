@@ -46,6 +46,7 @@ import com.first.pnrenq.ui.theme.PnrAccentSurface
 import com.first.pnrenq.ui.theme.PnrenqTheme
 import com.first.pnrenq.ui.theme.pnrAccentBrush
 import com.first.pnrenq.ui.theme.ThemeText as Text
+import com.first.pnrenq.ui.common.PnrNumberBubble
 
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -653,7 +654,6 @@ private fun SectionHeading(
 /* =========================================================
    SAVED PNR CARD — UNCHANGED SOLID BACKGROUND
 ========================================================= */
-
 @Composable
 private fun HomePnrCard(
     pnr: PnrInfo,
@@ -661,9 +661,7 @@ private fun HomePnrCard(
     onClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-
     val context = LocalContext.current
-
     val scheme = MaterialTheme.colorScheme
 
     val timeFormat =
@@ -735,6 +733,10 @@ private fun HomePnrCard(
             verticalArrangement =
                 Arrangement.spacedBy(9.dp)
         ) {
+
+            /* =====================================
+               TRAIN NAME AND ACTION BUTTONS
+            ===================================== */
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -820,9 +822,15 @@ private fun HomePnrCard(
                 }
             }
 
+            /* =====================================
+               JOURNEY INFORMATION
+            ===================================== */
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 StationLabel(
@@ -834,11 +842,14 @@ private fun HomePnrCard(
 
                 Text(
                     text = "→",
+
                     modifier = Modifier.padding(
                         horizontal = 9.dp
                     ),
+
                     style =
                         MaterialTheme.typography.titleLarge,
+
                     color = scheme.primary
                 )
 
@@ -854,24 +865,29 @@ private fun HomePnrCard(
                 color = scheme.outlineVariant
             )
 
+            /* =====================================
+               PNR BUBBLE AND CURRENT STATUS
+            ===================================== */
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
                 Column(
                     modifier = Modifier.weight(1f),
+
+                    horizontalAlignment = Alignment.Start,
+
                     verticalArrangement =
-                        Arrangement.spacedBy(3.dp)
+                        Arrangement.spacedBy(5.dp)
                 ) {
 
-                    Text(
-                        text = "PNR ${pnr.pnrNumber}",
-                        style =
-                            MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = scheme.onSurface,
-                        maxLines = 1
+                    // Theme-aware PNR bubble.
+                    PnrNumberBubble(
+                        pnrNumber = pnr.pnrNumber
                     )
 
                     Text(
@@ -881,8 +897,14 @@ private fun HomePnrCard(
                                 timeFormat
                             )
                         }",
+
+                        modifier = Modifier.padding(
+                            start = 4.dp
+                        ),
+
                         style =
                             MaterialTheme.typography.labelSmall,
+
                         color = scheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
