@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 import com.first.pnrenq.ui.common.PnrBackButton
+
 import com.first.pnrenq.ui.theme.AppScreenBackground
 import com.first.pnrenq.ui.theme.PnrScreenType
 import com.first.pnrenq.ui.theme.AppThemeMode
@@ -42,6 +45,9 @@ fun SettingsScreen(
     onTimeFormatSelected: (AppTimeFormat) -> Unit,
     onReset: () -> Unit,
     onBack: () -> Unit,
+    onPoliciesClick: () -> Unit,
+    onReportBug: () -> Unit,
+    onViewSource: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -71,7 +77,8 @@ fun SettingsScreen(
                     containerColor = Color.Transparent,
                     scrolledContainerColor = Color.Transparent,
                     titleContentColor = scheme.onBackground,
-                    navigationIconContentColor = scheme.onBackground
+                    navigationIconContentColor =
+                        scheme.onBackground
                 )
             )
         }
@@ -83,9 +90,11 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
+
             verticalArrangement =
                 Arrangement.spacedBy(18.dp)
         ) {
+
             Text(
                 text = "Make it yours",
                 style = MaterialTheme.typography.headlineSmall,
@@ -102,12 +111,19 @@ fun SettingsScreen(
 
             ThemePreviewCard(settings)
 
+            /* -----------------------------------------
+               APPEARANCE
+            ----------------------------------------- */
+
             SettingsDropdownSection(
                 title = "Appearance",
                 selectedTitle = settings.mode.title,
-                selectedDescription = settings.mode.description,
+                selectedDescription =
+                    settings.mode.description,
+
                 expanded =
                     expandedSection == "appearance",
+
                 onToggle = {
                     expandedSection =
                         if (expandedSection == "appearance") {
@@ -122,6 +138,7 @@ fun SettingsScreen(
                         title = mode.title,
                         description = mode.description,
                         selected = settings.mode == mode,
+
                         onClick = {
                             onModeSelected(mode)
                             expandedSection = null
@@ -130,13 +147,19 @@ fun SettingsScreen(
                 }
             }
 
+            /* -----------------------------------------
+               COLOR PALETTE
+            ----------------------------------------- */
+
             SettingsDropdownSection(
                 title = "Color palette",
                 selectedTitle = settings.palette.title,
                 selectedDescription =
                     settings.palette.description,
+
                 expanded =
                     expandedSection == "palette",
+
                 onToggle = {
                     expandedSection =
                         if (expandedSection == "palette") {
@@ -145,6 +168,7 @@ fun SettingsScreen(
                             "palette"
                         }
                 },
+
                 selectedPreview = {
                     PalettePreview(settings.palette)
                 }
@@ -153,17 +177,25 @@ fun SettingsScreen(
                     SettingsOptionRow(
                         title = palette.title,
                         description = palette.description,
-                        selected = settings.palette == palette,
+
+                        selected =
+                            settings.palette == palette,
+
                         onClick = {
                             onPaletteSelected(palette)
                             expandedSection = null
                         },
+
                         leading = {
                             PalettePreview(palette)
                         }
                     )
                 }
             }
+
+            /* -----------------------------------------
+               BACKGROUND STYLE
+            ----------------------------------------- */
 
             SettingsSection(
                 title = "Background style",
@@ -174,15 +206,21 @@ fun SettingsScreen(
                         title = style.title,
                         description = style.description,
                         selected = settings.style == style,
+
                         onClick = {
                             onStyleSelected(style)
                         },
+
                         leading = {
                             StylePreview(style)
                         }
                     )
                 }
             }
+
+            /* -----------------------------------------
+               TIME FORMAT
+            ----------------------------------------- */
 
             SettingsSection(
                 title = "Time format",
@@ -192,8 +230,10 @@ fun SettingsScreen(
                     SettingsOptionRow(
                         title = format.title,
                         description = format.description,
+
                         selected =
                             settings.timeFormat == format,
+
                         onClick = {
                             onTimeFormatSelected(format)
                         }
@@ -201,7 +241,10 @@ fun SettingsScreen(
                 }
             }
 
-            // Current Preferences now supports the palette gradient.
+            /* -----------------------------------------
+               CURRENT PREFERENCES
+            ----------------------------------------- */
+
             PnrAccentSurface(
                 modifier = Modifier.fillMaxWidth(),
                 backgroundColor = scheme.primaryContainer,
@@ -237,16 +280,24 @@ fun SettingsScreen(
                 }
             }
 
+            /* -----------------------------------------
+               RESTORE DEFAULTS
+            ----------------------------------------- */
+
             OutlinedButton(
                 onClick = {
                     expandedSection = null
                     onReset()
                 },
+
                 modifier = Modifier.fillMaxWidth(),
+
                 shape = RoundedCornerShape(16.dp),
+
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = scheme.primary
                 ),
+
                 border = BorderStroke(
                     1.dp,
                     scheme.outline
@@ -266,10 +317,127 @@ fun SettingsScreen(
                 color = scheme.onBackground
             )
 
-            Spacer(Modifier.height(12.dp))
+            /* =========================================
+               NEW: SUPPORT & LEGAL
+            ========================================= */
+
+            HorizontalDivider(
+                color = scheme.outlineVariant
+            )
+
+            Column(
+                verticalArrangement =
+                    Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "Support & legal",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.onBackground
+                )
+
+                Text(
+                    text = "Privacy, policies and project support",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onBackground
+                )
+            }
+
+            SettingsLinkCard(
+                title = "Policies & Legal",
+                description = "Privacy policy, terms and disclaimer",
+                symbol = "›",
+                onClick = onPoliciesClick
+            )
+
+            SettingsLinkCard(
+                title = "Report a Bug",
+                description = "Open the GitHub issue tracker",
+                symbol = "↗",
+                onClick = onReportBug
+            )
+
+            SettingsLinkCard(
+                title = "Source Code & Licenses",
+                description = "View the project and MIT License",
+                symbol = "↗",
+                onClick = onViewSource
+            )
+
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
+
+/* =========================================================
+   NEW: SUPPORT / LEGAL ACTION CARD
+========================================================= */
+
+@Composable
+private fun SettingsLinkCard(
+    title: String,
+    description: String,
+    symbol: String,
+    onClick: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+
+        colors = CardDefaults.cardColors(
+            containerColor = scheme.surfaceContainerLow,
+            contentColor = scheme.onSurface
+        ),
+
+        border = BorderStroke(
+            1.dp,
+            scheme.outlineVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = 17.dp,
+                vertical = 16.dp
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement =
+                Arrangement.spacedBy(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement =
+                    Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = scheme.onSurface
+                )
+
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant
+                )
+            }
+
+            Text(
+                text = symbol,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = scheme.primary
+            )
+        }
+    }
+}
+
+/* =========================================================
+   APPEARANCE / PALETTE DROPDOWN
+========================================================= */
 
 @Composable
 private fun SettingsDropdownSection(
@@ -286,10 +454,12 @@ private fun SettingsDropdownSection(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
+
         colors = CardDefaults.cardColors(
             containerColor = scheme.surfaceContainerLow,
             contentColor = scheme.onSurface
         ),
+
         border = BorderStroke(
             1.dp,
             if (expanded) {
@@ -300,11 +470,13 @@ private fun SettingsDropdownSection(
         )
     ) {
         Column {
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle)
                     .padding(16.dp),
+
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement =
                     Arrangement.spacedBy(12.dp)
@@ -355,6 +527,10 @@ private fun SettingsDropdownSection(
     }
 }
 
+/* =========================================================
+   REGULAR SETTINGS SECTION
+========================================================= */
+
 @Composable
 private fun SettingsSection(
     title: String,
@@ -364,7 +540,8 @@ private fun SettingsSection(
     val scheme = MaterialTheme.colorScheme
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(9.dp)
+        verticalArrangement =
+            Arrangement.spacedBy(9.dp)
     ) {
         Text(
             text = title,
@@ -382,10 +559,12 @@ private fun SettingsSection(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
+
             colors = CardDefaults.cardColors(
                 containerColor = scheme.surfaceContainerLow,
                 contentColor = scheme.onSurface
             ),
+
             border = BorderStroke(
                 1.dp,
                 scheme.outlineVariant
@@ -395,6 +574,10 @@ private fun SettingsSection(
         }
     }
 }
+
+/* =========================================================
+   OPTION ROW
+========================================================= */
 
 @Composable
 private fun SettingsOptionRow(
@@ -415,6 +598,7 @@ private fun SettingsOptionRow(
                     horizontal = 16.dp,
                     vertical = 12.dp
                 ),
+
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement =
                 Arrangement.spacedBy(12.dp)
@@ -429,11 +613,13 @@ private fun SettingsOptionRow(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
+
                     fontWeight = if (selected) {
                         FontWeight.SemiBold
                     } else {
                         FontWeight.Normal
                     },
+
                     color = scheme.onSurface
                 )
 
@@ -447,10 +633,10 @@ private fun SettingsOptionRow(
             RadioButton(
                 selected = selected,
                 onClick = onClick,
+
                 colors = RadioButtonDefaults.colors(
                     selectedColor = scheme.primary,
-                    unselectedColor =
-                        scheme.onSurfaceVariant
+                    unselectedColor = scheme.onSurfaceVariant
                 )
             )
         }
@@ -463,7 +649,7 @@ private fun SettingsOptionRow(
 }
 
 /* =========================================================
-   LIVE PREVIEW — MATCHING GRADIENT CARD
+   LIVE PREVIEW — PRESERVED
 ========================================================= */
 
 @Composable
@@ -472,13 +658,13 @@ private fun ThemePreviewCard(
 ) {
     val scheme = MaterialTheme.colorScheme
 
-    // The outer preview card changes with the selected style.
     PnrAccentSurface(
         modifier = Modifier.fillMaxWidth(),
         backgroundColor = scheme.surfaceContainerLow,
         foregroundColor = scheme.onSurface,
         shape = RoundedCornerShape(24.dp),
         strength = 0.95f,
+
         border = BorderStroke(
             1.dp,
             scheme.outlineVariant
@@ -496,8 +682,6 @@ private fun ThemePreviewCard(
                 color = scheme.primary
             )
 
-            // The inner preview continues to show the
-            // real, screen-specific background pattern.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -556,6 +740,10 @@ private fun ThemePreviewCard(
         }
     }
 }
+
+/* =========================================================
+   PALETTE / STYLE PREVIEW — PRESERVED
+========================================================= */
 
 @Composable
 private fun PalettePreview(

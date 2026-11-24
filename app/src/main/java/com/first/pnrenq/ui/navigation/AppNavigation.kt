@@ -1,6 +1,11 @@
 
 package com.first.pnrenq.ui.navigation
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 
@@ -10,6 +15,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import androidx.navigation.NavType
@@ -18,9 +25,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 
+import com.first.pnrenq.BuildConfig
+
 import com.first.pnrenq.ui.add.AddPnrScreen
 import com.first.pnrenq.ui.details.DetailsScreen
 import com.first.pnrenq.ui.home.HomeScreen
+import com.first.pnrenq.ui.legal.PoliciesScreen
 import com.first.pnrenq.ui.settings.SettingsScreen
 
 import com.first.pnrenq.ui.state.PnrNavigationEvent
@@ -35,16 +45,27 @@ import com.first.pnrenq.ui.theme.AppThemeStyle
 import com.first.pnrenq.ui.theme.AppTimeFormat
 import com.first.pnrenq.ui.theme.ThemeSettings
 
+/* =========================================================
+   APPLICATION ROUTES
+========================================================= */
+
 object Routes {
     const val HOME = "home"
     const val ADD = "add"
     const val SETTINGS = "settings"
+    const val POLICIES = "policies"
 
     const val DETAILS_ARG = "pnr"
     const val DETAILS = "details/{$DETAILS_ARG}"
 
-    fun details(pnr: String): String = "details/$pnr"
+    fun details(pnr: String): String {
+        return "details/$pnr"
+    }
 }
+
+/* =========================================================
+   APPLICATION NAVIGATION
+========================================================= */
 
 @Composable
 fun AppNavigation(
@@ -58,20 +79,120 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
 
+    val context = LocalContext.current
+
     val pnrViewModel: PnrViewModel = viewModel()
 
     val state by pnrViewModel.state.collectAsState()
 
-    LaunchedEffect(navController, pnrViewModel) {
+    /* =====================================================
+       EXTERNAL LINK HANDLING
+    ===================================================== */
+
+    fun openExternalLink(url: String) {
+        try {
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse(url)
+            ).apply {
+                addCategory(
+                    Intent.CATEGORY_BROWSABLE
+                )
+            }
+
+            context.startActivity(intent)
+
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(
+                context,
+                "No browser available to open this link.",
+                Toast.LENGTH_SHORT
+            ).show()
+
+        } catch (_: SecurityException) {
+            Toast.makeText(
+                context,
+                "Unable to open this external link.",
+                Toast.LENGTH_SHORT
+            ).show()
+
+        } catch (_: IllegalArgumentException) {
+            Toast.makeText(
+                context,
+                "Invalid external link.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    /* =====================================================
+       PROJECT LINKS
+
+       Repository URL comes from BuildConfig,
+       generated from ignored local.properties.
+
+       No repository URL is hardcoded here.
+    ===================================================== */
+
+    fun openProjectLink(path: String = "") {
+        val repo = BuildConfig.GITHUB_REPO_URL
+            .trim()
+            .trimEnd('/')
+
+        if (repo.isBlank()) {
+            Toast.makeText(
+                context,
+                "Project link is not configured.",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            return
+        }
+
+        val parsedRepo = Uri.parse(repo)
+
+        if (
+            parsedRepo.scheme != "https" ||
+            parsedRepo.host != "github.com" ||
+            parsedRepo.encodedQuery != null ||
+            parsedRepo.encodedFragment != null
+        ) {
+            Toast.makeText(
+                context,
+                "Invalid project repository URL.",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            return
+        }
+
+        openExternalLink(
+            repo + path
+        )
+    }
+
+    /* =====================================================
+       VIEWMODEL NAVIGATION EVENTS
+    ===================================================== */
+
+    LaunchedEffect(
+        navController,
+        pnrViewModel
+    ) {
         pnrViewModel.navigationEvents.collect { event ->
 
-            val entry = navController.currentBackStackEntry
-            val route = entry?.destination?.route
+            val entry =
+                navController.currentBackStackEntry
+
+            val route =
+                entry?.destination?.route
 
             when (event) {
 
                 is PnrNavigationEvent.OpenDetails -> {
+
                     if (route == Routes.ADD) {
+
                         navController.navigate(
                             Routes.details(event.pnr)
                         ) {
@@ -83,6 +204,7 @@ fun AppNavigation(
                 }
 
                 is PnrNavigationEvent.ReturnAfterDelete -> {
+
                     val activePnr = entry
                         ?.arguments
                         ?.getString(Routes.DETAILS_ARG)
@@ -98,12 +220,20 @@ fun AppNavigation(
         }
     }
 
+    /* =====================================================
+       NAVIGATION HOST
+
+       All regular and predictive-back screen
+       transitions remain disabled.
+    ===================================================== */
+
     NavHost(
         navController = navController,
+
         startDestination = Routes.HOME,
+
         modifier = modifier,
 
-        // Forward navigation: no animations.
         enterTransition = {
             EnterTransition.None
         },
@@ -112,7 +242,6 @@ fun AppNavigation(
             ExitTransition.None
         },
 
-        // Back-button navigation: no animations.
         popEnterTransition = {
             EnterTransition.None
         },
@@ -121,7 +250,6 @@ fun AppNavigation(
             ExitTransition.None
         },
 
-        // Predictive-back gestures: no screen animations.
         predictivePopEnterTransition = {
             EnterTransition.None
         },
@@ -131,7 +259,9 @@ fun AppNavigation(
         }
     ) {
 
-        /* ---------- HOME ---------- */
+        /* =================================================
+           HOME
+        ================================================= */
 
         composable(Routes.HOME) {
 
@@ -139,18 +269,23 @@ fun AppNavigation(
                 screen = PnrScreenType.HOME
             ) {
 
-                val homeError = state.detailsMessage?.takeIf {
-                    it.startsWith(
-                        "Unable to delete",
-                        ignoreCase = true
-                    )
-                }
+                val homeError =
+                    state.detailsMessage?.takeIf {
+                        it.startsWith(
+                            "Unable to delete",
+                            ignoreCase = true
+                        )
+                    }
 
                 HomeScreen(
                     pnrs = state.pnrs,
+
                     isLoading = state.isLoading,
+
                     loadError = state.loadError,
+
                     deletingPnrs = state.deletingPnrs,
+
                     homeMessage = homeError,
 
                     onHomeMessageShown = {
@@ -164,7 +299,9 @@ fun AppNavigation(
                     onAddClick = {
                         pnrViewModel.clearAddError()
 
-                        navController.navigate(Routes.ADD)
+                        navController.navigate(
+                            Routes.ADD
+                        )
                     },
 
                     onPnrClick = { pnr ->
@@ -190,7 +327,9 @@ fun AppNavigation(
             }
         }
 
-        /* ---------- ADD PNR ---------- */
+        /* =================================================
+           ADD PNR
+        ================================================= */
 
         composable(Routes.ADD) {
 
@@ -200,6 +339,7 @@ fun AppNavigation(
 
                 AddPnrScreen(
                     isChecking = state.isChecking,
+
                     errorMessage = state.addError,
 
                     onBack = {
@@ -213,13 +353,17 @@ fun AppNavigation(
             }
         }
 
-        /* ---------- DETAILS ---------- */
+        /* =================================================
+           PNR DETAILS
+        ================================================= */
 
         composable(
             route = Routes.DETAILS,
 
             arguments = listOf(
-                navArgument(Routes.DETAILS_ARG) {
+                navArgument(
+                    Routes.DETAILS_ARG
+                ) {
                     type = NavType.StringType
                 }
             )
@@ -230,12 +374,15 @@ fun AppNavigation(
             ) {
 
                 val pnrNumber = entry.arguments
-                    ?.getString(Routes.DETAILS_ARG)
+                    ?.getString(
+                        Routes.DETAILS_ARG
+                    )
                     .orEmpty()
 
-                val currentPnr = state.pnrs.firstOrNull {
-                    it.pnrNumber == pnrNumber
-                }
+                val currentPnr = state.pnrs
+                    .firstOrNull {
+                        it.pnrNumber == pnrNumber
+                    }
 
                 val message = if (
                     state.messagePnr == pnrNumber
@@ -247,6 +394,7 @@ fun AppNavigation(
 
                 DetailsScreen(
                     pnr = currentPnr,
+
                     isLoading = state.isLoading,
 
                     isRefreshing =
@@ -260,11 +408,15 @@ fun AppNavigation(
                     },
 
                     onRefresh = {
-                        pnrViewModel.refreshPnr(pnrNumber)
+                        pnrViewModel.refreshPnr(
+                            pnrNumber
+                        )
                     },
 
                     onDelete = {
-                        pnrViewModel.deletePnr(pnrNumber)
+                        pnrViewModel.deletePnr(
+                            pnrNumber
+                        )
                     },
 
                     onBack = {
@@ -274,7 +426,9 @@ fun AppNavigation(
             }
         }
 
-        /* ---------- SETTINGS ---------- */
+        /* =================================================
+           SETTINGS
+        ================================================= */
 
         composable(Routes.SETTINGS) {
 
@@ -297,10 +451,59 @@ fun AppNavigation(
                     onTimeFormatSelected =
                         onTimeFormatSelected,
 
-                    onReset = onThemeReset,
+                    onReset =
+                        onThemeReset,
 
                     onBack = {
                         navController.popBackStack()
+                    },
+
+                    onPoliciesClick = {
+                        navController.navigate(
+                            Routes.POLICIES
+                        ) {
+                            launchSingleTop = true
+                        }
+                    },
+
+                    onReportBug = {
+                        openProjectLink(
+                            "/issues"
+                        )
+                    },
+
+                    onViewSource = {
+                        openProjectLink()
+                    }
+                )
+            }
+        }
+
+        /* =================================================
+           POLICIES & LEGAL
+        ================================================= */
+
+        composable(Routes.POLICIES) {
+
+            AppScreenBackground(
+                screen = PnrScreenType.SETTINGS
+            ) {
+
+                PoliciesScreen(
+                    onBack = {
+                        navController.popBackStack()
+                    },
+
+                    onReportBug = {
+                        openProjectLink(
+                            "/issues"
+                        )
+                    },
+
+                    onOpenLicense = {
+                        openProjectLink(
+                            "/blob/main/LICENSE.md"
+                        )
                     }
                 )
             }

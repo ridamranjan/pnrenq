@@ -1,12 +1,13 @@
+
 # PNR EXPERT
 
 **PNR EXPERT** is a lightweight, offline-first Android application for checking, saving, and managing Indian Railways Passenger Name Record (PNR) information.
 
-Built using **Kotlin, Jetpack Compose, Material 3, and Room**, the application provides a customizable interface, locally saved journey information, and manually initiated PNR status checks.
+Built with **Kotlin, Jetpack Compose, Material 3, and Room**, the application provides a modern interface, customizable themes, locally saved journey information, and manually initiated PNR checks.
 
-The application uses a configurable serverless backend to communicate with external PNR information providers.
+Live PNR information is retrieved through a separately configured serverless backend.
 
-> PNR EXPERT is an independent application and is not affiliated with Indian Railways or IRCTC.
+> **Disclaimer:** PNR EXPERT is an independent application and is not affiliated with Indian Railways, IRCTC, or the Government of India.
 
 ---
 
@@ -14,68 +15,165 @@ The application uses a configurable serverless backend to communicate with exter
 
 ### PNR Management
 
-- Check Indian Railways 10-digit PNR numbers.
-- Automatically save successful PNR checks.
-- Access previously saved journey information offline.
-- Refresh PNR status manually.
+- Check 10-digit Indian Railways PNR numbers.
+- Automatically save successfully retrieved PNR information.
+- View saved PNRs without an internet connection.
+- Refresh reservation status manually.
 - Delete saved PNR records.
 - Prevent duplicate saved PNR entries.
-- Preserve existing data when refreshing fails.
+- Preserve existing information when refreshing fails.
 - Copy PNR numbers to the clipboard.
-- View the last successful status-check timestamp.
+- View the last successful check timestamp.
+- Organize saved PNRs into upcoming and past journeys.
 
-The application does not perform automatic background PNR refreshes.
+**Automatic background refresh is not performed.**
 
-### Journey Information
+### Journey Details
 
-Depending on information returned by the provider, PNR EXPERT can display:
+Depending on the information returned by the provider, the app displays:
 
 - PNR number
 - Train name and number
-- Source and destination stations
 - Journey date
+- Departure and arrival stations
 - Departure and arrival times
 - Journey duration
-- Booking and current reservation status
-- Passenger-wise reservation information
-- Coach and berth allocation
-- Chart preparation status
 - Travel class
 - Reservation quota
 - Boarding station
-- Reservation destination
-- Journey distance
-- Booking and ticket fares
+- Destination station
+- Chart preparation status
+- Ticket fare
 - Booking date
 - Ticket type
+- Journey distance
+- Passenger booking status
+- Passenger current status
+- Coach and berth allocation
 - VIKALP information
-- Last successful check time
+- Last successful status-check time
 
-Unavailable information is omitted when appropriate.
+Unavailable fields are omitted when appropriate.
 
-### Passenger Information
+---
 
-Passenger information is presented using compact, color-coded status badges.
+## Reservation Information
 
-Example:
+PNR EXPERT includes a dedicated **Reservation Information** card inside the PNR Details screen.
+
+The card explains the meaning of the current reservation statuses found in the selected PNR.
+
+### Features
+
+- Displays only relevant reservation statuses.
+- Avoids repeating explanations for multiple passengers with the same status.
+- Supports confirmed, RAC, waiting-list, and other recognized reservation statuses.
+- Uses a seat icon in the card header.
+- Displays status abbreviations on the left.
+- Displays their meanings and explanations on the right.
+- Maintains consistent horizontal alignment for all status codes.
+- Works completely offline using saved PNR information.
+
+### Example
+
+Passenger information:
 
 ```text
-P1                [RAC 7] / [RAC 3]
-P2                [WL 12] / [RAC 5]
-P3                    [CNF A1 15 LB]
+P1     RAC 7 / RAC 3
+P2     WL 12 / CNF
+P3     WL 15 / WL 5
 ```
 
-- Passenger identifiers have theme-colored backgrounds.
-- Booking and current status badges appear together.
-- Status details are aligned toward the right.
-- Confirmed passengers with allocated berths can display a single current-status badge.
-- Coach and berth information is formatted to avoid unnecessary duplication.
+Reservation Information:
+
+```text
+RAC   Reservation Against Cancellation
+      A passenger can travel with RAC
+      accommodation. A full berth may
+      become available after cancellations.
+
+CNF   Confirmed
+      The passenger's reservation is
+      confirmed.
+
+WL    Waiting List
+      The reservation has not yet been
+      confirmed. Check the final status
+      and applicable travel rules.
+```
+
+Each distinct current status appears only once.
+
+### Supported Status Codes
+
+The explanation system recognizes common status codes, including:
+
+| Status | Meaning |
+|---|---|
+| CNF | Confirmed |
+| RAC | Reservation Against Cancellation |
+| WL | Waiting List |
+| GNWL | General Waiting List |
+| RLWL | Remote Location Waiting List |
+| PQWL | Pooled Quota Waiting List |
+| TQWL | Tatkal Quota Waiting List |
+| RQWL | Roadside Quota Waiting List |
+| DPWL | Duty Pass Waiting List |
+| RSWL | Roadside Station Waiting List |
+| RLGN | Roadside Waiting List |
+| CKWL | Tatkal Waiting List (older designation) |
+| CAN | Cancelled |
+| MOD | Modified Passenger |
+| REGRET | No More Booking Permitted |
+| REL | Released |
+| WEBCAN | Counter Ticket Cancelled Online |
+| WEBCANRF | Online Cancellation, Refund Collected |
+| NT | Passenger Not Turned Up |
+| TDR | Ticket Deposit Receipt |
+| NOSB | No Seat or Berth |
+
+The card recognizes status codes from saved passenger information. When a current status cannot be identified, the booking status may be used as a fallback.
+
+### Status Colors
+
+Reservation Information badges use fixed colors independent of the selected app theme.
+
+Each recognized status has its own predefined color scheme.
+
+The explanation text follows the selected appearance mode and color palette.
+
+The status column uses a consistent width so that all explanations begin at the same horizontal position.
+
+---
+
+## Passenger Status Display
+
+Passenger reservation information is displayed in compact, color-coded badges.
+
+For example:
+
+```text
+P1       RAC 7 / RAC 3
+P2       WL 12 / CNF
+P3       CNF B1 25
+```
+
+The passenger list uses the following visual rules:
+
+- Booking status uses red.
+- Current status uses green.
+- Passenger identifiers use theme-aware surfaces.
+- Confirmed passengers with allocated berths may display only the current-status badge.
+- Coach and berth details are formatted to avoid duplication.
+- Passenger-status colors remain separate from the selected theme.
+
+The Reservation Information card appears below the passenger list rather than repeating explanations under each passenger.
 
 ---
 
 ## Appearance and Personalization
 
-PNR EXPERT includes an extensive Material 3 theme system.
+PNR EXPERT supports an extensive Material 3 theme system.
 
 ### Appearance Modes
 
@@ -83,14 +181,14 @@ Eight appearance modes are available:
 
 | Mode | Description |
 |---|---|
-| System Default | Follows device appearance |
+| System Default | Follows the device appearance |
 | Light | Standard light appearance |
 | Dark | Standard dark appearance |
-| AMOLED | Black, OLED-friendly surfaces |
-| Soft Light | Gentle light surfaces |
-| Soft Dark | Muted charcoal surfaces |
-| High Contrast Light | Strong text contrast on bright surfaces |
-| High Contrast Dark | Strong text contrast on near-black surfaces |
+| AMOLED | OLED-friendly dark appearance |
+| Soft Light | Softer light surfaces |
+| Soft Dark | Muted dark surfaces |
+| High Contrast Light | Increased contrast on light surfaces |
+| High Contrast Dark | Increased contrast on dark surfaces |
 
 ### Color Palettes
 
@@ -100,94 +198,128 @@ Eight color palettes are available:
 |---|---|
 | Ocean | Blue |
 | Forest | Green |
-| Sunset | Orange / Terracotta |
+| Sunset | Orange |
 | Midnight | Violet |
-| Rose | Pink / Berry |
+| Rose | Pink |
 | Lagoon | Teal |
 | Amber | Golden yellow |
 | Slate | Steel blue |
 
-Every palette works with every appearance mode.
+All palettes work with all supported appearance modes.
 
 ### Background Styles
 
-Two background styles are supported.
+Two background styles are provided.
 
 **Simplified**
 
-- Clean, mostly solid-color backgrounds.
+- Clean, solid-color backgrounds.
 - Minimal visual distractions.
-- Theme-coordinated cards and surfaces.
-- Black backgrounds in Simplified AMOLED mode.
+- Solid theme-aware cards.
+- Solid accent surfaces.
+- AMOLED-friendly surfaces in AMOLED mode.
 
 **Gradient**
 
-- Palette-aware gradient backgrounds.
-- Different visual patterns for individual screens.
-- Gradient-styled application text where supported.
+- Palette-aware screen backgrounds.
+- Gradient accent cards.
+- Gradient-themed primary UI surfaces.
+- Theme-aware text gradients.
 - Contrast-aware foreground colors.
-- Controlled gradient intensity in dark and high-contrast modes.
+- Distinct background patterns for individual screens.
 
-There are **128 possible combinations** of appearance mode, palette, and background style.
+### Screen-Specific Backgrounds
 
-### Individual Screen Backgrounds
-
-Each main screen has a distinct background design:
+Each screen has its own background pattern while using the selected color palette.
 
 | Screen | Background |
 |---|---|
-| Home | Signature vertical gradient |
-| PNR Details | Journey-focused gradient |
-| Add PNR | Subtle diagonal gradient |
+| Home | Vertical palette gradient |
+| PNR Details | Journey-focused vertical gradient |
+| Add PNR | Diagonal gradient |
 | Settings | Ambient corner-glow gradient |
+| Policies & Legal | Settings-style background |
 
-All backgrounds are generated using Jetpack Compose rather than external image assets.
+Backgrounds are drawn using Jetpack Compose.
 
-The backgrounds automatically follow the selected appearance, palette, and background style.
+The application does not require external background images.
+
+### Gradient Accent Components
+
+The following UI elements support coordinated palette gradients:
+
+- PNR EXPERT header
+- Home Settings button
+- Home Add PNR button
+- Train Summary card
+- Last Update card
+- Live Preview card
+- Current Preferences card
+- Your Journey Saved card
+- Add PNR numeric badge
+
+These components retain their original solid background colors in Simplified mode.
+
+The Add PNR button uses a single rounded gradient surface to prevent mismatched rectangular background layers.
 
 ### Text and Contrast
 
-The application uses theme-aware foreground colors for:
+The app uses theme-aware colors for:
 
 - Screen headings
-- Information cards
-- Buttons
-- Settings selections
-- Text-field labels
-- PNR input
+- Card titles
+- Information labels
+- Navigation icons
+- Form text
 - Journey information
-- Passenger details
+- Settings controls
+- Legal information
 
-The custom gradient-text component uses subtle variations of the appropriate foreground color to preserve readability.
+Gradient text is applied where appropriate while maintaining readable foreground colors.
 
-Certain native Material controls retain solid text colors for clarity.
+Some UI elements deliberately retain solid text, including passenger status badges, input digits, and certain native Material controls.
+
+---
+
+## Settings
+
+The Settings screen supports:
+
+- Appearance selection
+- Color Palette selection
+- Background Style selection
+- Time Format selection
+- Live Preview
+- Current Preferences
+- Reset to Default
+- Policies & Legal
+- Report a Bug
+- Source Code & Licenses
+
+### Expandable Selection Cards
+
+Appearance and Color Palette use collapsible selection cards.
+
+- The selected option appears when collapsed.
+- Tapping expands the available options.
+- Selecting an option applies it immediately.
+- The section collapses after selection.
+- Only one expandable section remains open at a time.
 
 ### Time Format
 
-Users can select:
+Two time formats are available:
 
-- **12-hour:** `8:35 PM`
-- **24-hour:** `20:35`
+| Format | Example |
+|---|---|
+| 12-hour | 8:35 PM |
+| 24-hour | 20:35 |
 
-The preference applies to supported journey times and last-check timestamps.
+Preferences persist across application restarts.
 
-### Settings Interface
+### Reset to Default
 
-Appearance and Color Palette use expandable selection cards.
-
-- Only the selected option is visible initially.
-- Tapping the card expands its available options.
-- Selecting an option applies it immediately.
-- The card collapses automatically after selection.
-- Opening one selection card closes the other.
-
-Background Style and Time Format remain directly selectable.
-
-### Persistent Preferences
-
-Theme and time-format preferences are saved locally and restored when the application restarts.
-
-The **Reset to Default** option restores:
+Reset to Default restores:
 
 | Setting | Default |
 |---|---|
@@ -196,7 +328,7 @@ The **Reset to Default** option restores:
 | Background Style | Simplified |
 | Time Format | 24-hour |
 
-Resetting preferences does not delete saved PNR records.
+Resetting appearance preferences does not delete saved PNR information.
 
 ---
 
@@ -206,56 +338,58 @@ PNR EXPERT uses Jetpack Compose and Material 3.
 
 ### Home Screen
 
-The Home screen provides:
+The Home screen includes:
 
-- Compact PNR EXPERT header card
+- Compact PNR EXPERT header
+- Upcoming journeys
+- Past journeys
+- Compact saved-PNR cards
+- PNR copy action
+- PNR deletion action
+- Reservation status summary
+- Last successful check timestamp
 - Settings button at the bottom-left
-- Add PNR action at the bottom-right
-- Upcoming and past journey sections
-- Compact journey cards
-- Copy and delete actions
-- Train and station details
-- Current reservation status
-- Last successful check time
+- Add PNR button at the bottom-right
 
-The Settings button uses a compact 48 dp card.
+The Settings button uses a 48 dp surface.
 
-The header includes status-bar spacing to prevent overlap with Android system controls.
-
-### PNR Details Screen
-
-The details screen includes:
-
-1. Train summary card
-2. Refresh and delete icons
-3. Copyable PNR number
-4. Journey timeline
-5. Passenger reservation cards
-6. Journey information card
-7. Ticket and fare information
-8. Last update card
-
-Information is organized into separate, theme-aware components.
+The Add PNR button uses a single continuous rounded background in both Simplified and Gradient modes.
 
 ### Add PNR Screen
 
-The Add PNR screen provides:
+The Add PNR screen includes:
 
-- Numeric PNR input
-- 10-digit validation
-- Input-length counter
-- Validation feedback
-- Loading indicator
-- Network error messages
-- Confirmation of the offline-first workflow
+- Icon-only Back button
+- 10-digit numeric input
+- Input validation
+- Digit counter
+- Loading state
+- Network error feedback
+- Manual Check PNR action
+- Offline-saving information card
 
-Successful lookups are saved automatically.
+Successful PNR lookups are saved locally.
+
+### PNR Details Screen
+
+The Details screen contains:
+
+1. Train Summary
+2. PNR copy, refresh, and delete actions
+3. Journey timeline
+4. Passenger Information
+5. Reservation Information
+6. Journey Information
+7. Ticket Information
+8. Last Update
+
+The Ticket Information section retains its money icon and separate fare panel.
 
 ### Navigation
 
 The application uses Navigation Compose.
 
-In-app screen transitions are disabled:
+In-app navigation transitions are disabled:
 
 - No forward slide animation
 - No forward fade animation
@@ -263,9 +397,78 @@ In-app screen transitions are disabled:
 - No Back navigation fade animation
 - No Navigation Compose predictive-back screen transition, where supported
 
-System-level gesture animations are controlled by Android.
+Navigation uses icon-only Back buttons.
 
-The startup splash animation remains separate from screen navigation.
+Android system-level gesture animations are controlled separately by the operating system.
+
+---
+
+## Policies & Legal
+
+PNR EXPERT includes a dedicated in-app Policies & Legal screen.
+
+It is accessible through:
+
+```text
+Settings
+   |
+   v
+Policies & Legal
+```
+
+The screen contains information about:
+
+- Privacy Policy
+- Information used by the app
+- Local PNR storage
+- Internet requests
+- Data retention and deletion
+- User accounts
+- Bug reports
+- Terms of Use
+- Railway information disclaimer
+- Third-party services
+- Software licenses
+- Developer contact
+
+The legal screen follows the selected app theme and uses the same background system as Settings.
+
+**Important:** In-app legal text must be reviewed against the actual deployed backend and third-party provider practices before a public release.
+
+An in-app privacy notice does not replace the need for a publicly accessible privacy-policy URL where required by an app distribution platform.
+
+---
+
+## Bug Reporting and Project Links
+
+The Settings screen includes:
+
+**Report a Bug**
+
+Opens the configured project's issue tracker in an external browser.
+
+**Source Code & Licenses**
+
+Opens the configured project repository.
+
+**View Project License**
+
+Available from the Policies & Legal screen.
+
+Project-specific links are not hardcoded into the Android Kotlin source.
+
+Instead, the repository URL is provided through the locally ignored `local.properties` file and exposed to the application through a generated BuildConfig field.
+
+The Android application uses the base URL to construct links to:
+
+```text
+/issues
+/blob/main/LICENSE.md
+```
+
+If the repository URL is not configured, project-link actions display an error message rather than crashing.
+
+The configured repository address is not a secret and can still be discovered from a compiled APK or an opened browser page.
 
 ---
 
@@ -278,11 +481,12 @@ The startup splash animation remains separate from screen navigation.
 | UI framework | Jetpack Compose |
 | Design system | Material 3 |
 | Navigation | Navigation Compose |
-| Architecture | ViewModel and Repository |
+| State management | ViewModel |
+| Data layer | Repository pattern |
 | Local database | Room / SQLite |
-| Networking | Retrofit and OkHttp |
-| JSON handling | Gson |
-| Asynchronous work | Kotlin Coroutines and Flow |
+| Networking | Retrofit / OkHttp |
+| JSON processing | Gson |
+| Asynchronous operations | Kotlin Coroutines / Flow |
 | Backend | Serverless HTTPS API |
 | Build system | Gradle Kotlin DSL |
 | Symbol processing | KSP |
@@ -291,97 +495,100 @@ The startup splash animation remains separate from screen navigation.
 
 ## Architecture
 
-PNR EXPERT uses an offline-first client with a separately deployed serverless backend.
+PNR EXPERT uses an offline-first Android client with a separately configured serverless backend.
 
 ```text
-                    Android App
-                         |
-                  PNR input / Refresh
-                         |
-                         v
-                 Request Validation
-                         |
-                         v
-                  HTTPS API Request
-                         |
-                         v
-                  Serverless Backend
-                         |
-             +-----------+-----------+
-             |                       |
-       Request Controls       Provider Management
-             |                       |
-             +-----------+-----------+
-                         |
-                         v
-               External PNR Providers
-                         |
-                         v
-               Standardized Response
-                         |
-                         v
-                   Android App
-                         |
-                         v
-                  Room Database
-                         |
-          +--------------+--------------+
-          |              |              |
-          v              v              v
-      Home Screen   Details Screen  Offline Access
+Android Application
+        |
+        +-- Home Screen
+        +-- Add PNR Screen
+        +-- PNR Details Screen
+        |       |
+        |       +-- Passenger Information
+        |       +-- Reservation Information
+        |       +-- Journey Information
+        |       +-- Ticket Information
+        |
+        +-- Settings Screen
+        |       |
+        |       +-- Theme Preferences
+        |       +-- Policies & Legal
+        |       +-- External Project Links
+        |
+        v
+   ViewModel Layer
+        |
+        v
+   Repository Layer
+        |
+        +-------------------------+
+        |                         |
+        v                         v
+   Room Database             HTTPS Backend
+        |                         |
+        v                         v
+   Offline Access          PNR Data Providers
+                                  |
+                                  v
+                          Normalized Response
+                                  |
+                                  v
+                             Repository
+                                  |
+                                  v
+                            Room Database
 ```
 
 ### Android Architecture
-
-The application separates responsibilities into:
 
 **UI Layer**
 
 - Jetpack Compose screens
 - Navigation
-- Theme management
-- User interaction
+- Reusable UI components
+- Theme and appearance management
 
 **State Layer**
 
 - ViewModel
 - UI state
+- Loading and error states
 - Navigation events
-- Operation coordination
 
 **Domain Layer**
 
 - PNR models
 - Validation
-- Business rules
+- Reservation information rules
+- Business logic
 
 **Data Layer**
 
-- Room entities and repositories
+- Room persistence
 - Remote API communication
 - Data mapping
-- Local persistence
+- Repository operations
 
 ### Backend Responsibilities
 
-The serverless backend is responsible for:
+The separately configured serverless backend is designed to handle:
 
-- Validating incoming requests
-- Managing requests to external PNR providers
-- Applying usage limits
-- Handling external service failures
-- Standardizing provider responses
-- Protecting third-party API credentials
+- Input validation
+- Provider selection
+- Provider fallback
+- Request protection
+- Usage limits
+- Error handling
+- Normalized PNR responses
+- Protection of third-party API credentials
 
-The Android application should not contain third-party provider API keys.
+The backend's actual provider configuration and deployment status are maintained separately from the Android application.
 
-Backend deployment, secrets, and provider configuration are managed separately from the public Android repository.
+Third-party provider API keys must not be embedded in the Android APK.
 
 ---
 
 ## Offline-First Behavior
-
-Room provides local storage for successfully retrieved PNR information.
 
 ### Adding a PNR
 
@@ -392,12 +599,12 @@ Enter PNR
 Validate Input
     |
     v
-Request Latest Status
+Request Live Status
     |
     v
 Successful Response?
     |
-    +-- Yes --> Save to Room --> Show Details
+    +-- Yes --> Save Locally --> Show Details
     |
     +-- No  --> Show Error
 ```
@@ -411,16 +618,16 @@ Open Home
 Read Room Database
     |
     v
-Show Saved Journeys
+Display Saved Journeys
     |
     v
-Open Saved PNR
+Select PNR
     |
     v
-Display Local Information
+Show Saved Information
 ```
 
-Opening a saved PNR does not automatically trigger a new API request.
+Opening a saved PNR does not automatically initiate an online request.
 
 ### Manual Refresh
 
@@ -428,14 +635,16 @@ Opening a saved PNR does not automatically trigger a new API request.
 Tap Refresh
     |
     v
-Request Latest Information
+Request Current Status
     |
-    +-- Success --> Update Local Record
+    +-- Success --> Update Saved Record
     |
     +-- Failure --> Preserve Existing Record
 ```
 
-Saved information may become outdated if it has not been refreshed recently.
+Offline information represents the last successful check and may be outdated.
+
+The Reservation Information card works using saved passenger status values and does not require an additional API request.
 
 ---
 
@@ -453,17 +662,15 @@ pnrenq/
 |   |   |   +-- java/com/first/pnrenq/
 |   |   |   |   |
 |   |   |   |   +-- data/
-|   |   |   |   |   +-- local/
-|   |   |   |   |   +-- remote/
-|   |   |   |   |   +-- mock/
-|   |   |   |   |
 |   |   |   |   +-- domain/
 |   |   |   |   |
 |   |   |   |   +-- ui/
+|   |   |   |       |
 |   |   |   |       +-- home/
 |   |   |   |       +-- add/
 |   |   |   |       +-- details/
 |   |   |   |       +-- settings/
+|   |   |   |       +-- legal/
 |   |   |   |       +-- navigation/
 |   |   |   |       +-- state/
 |   |   |   |       +-- common/
@@ -480,15 +687,13 @@ pnrenq/
 +-- build.gradle.kts
 +-- settings.gradle.kts
 +-- gradle.properties
-+-- gradlew
-+-- gradlew.bat
 +-- README.md
 +-- SETUP.md
 +-- LICENSE.md
 +-- .gitignore
 ```
 
-Important theme-related components include:
+### Important UI Components
 
 ```text
 ui/theme/
@@ -496,9 +701,20 @@ ui/theme/
     ThemePreferences.kt
     ThemeText.kt
     AppScreenBackground.kt
+    PnrAccentSurface.kt
+
+ui/details/
+    DetailsScreen.kt
+    ReservationInformationCard.kt
+
+ui/legal/
+    PoliciesScreen.kt
+
+ui/navigation/
+    AppNavigation.kt
 ```
 
-Screen-specific backgrounds are managed centrally through `AppScreenBackground`.
+The theme system and reservation explanations are implemented separately from the network and database layers.
 
 ---
 
@@ -507,10 +723,11 @@ Screen-specific backgrounds are managed centrally through `AppScreenBackground`.
 ### Requirements
 
 - Android Studio
-- Android SDK Platform 37
 - Compatible Gradle JDK
-- Android emulator or physical Android device
-- Internet connection for live PNR checking
+- Android SDK
+- Android emulator or physical device
+- Internet connection for live PNR checks
+- Configured serverless API endpoint
 
 ### Android Configuration
 
@@ -520,62 +737,70 @@ Screen-specific backgrounds are managed centrally through `AppScreenBackground`.
 | Minimum SDK | 26 |
 | Target SDK | 37 |
 | Compile SDK | 37 |
-| Android Gradle Plugin | 9.5.2 |
-| Gradle wrapper | 9.6.0 |
+| Java compatibility | 11 |
 
-Use the versions configured in the repository.
+Other build-tool and library versions are defined by the Gradle configuration.
 
-### Clone the Repository
+### Open the Project
 
-```bash
-git clone https://github.com/ridamranjan/pnrenq.git
+1. Clone or download the project.
+2. Open it in Android Studio.
+3. Install the SDK components requested by Gradle.
+4. Configure `local.properties`.
+5. Sync Gradle.
+6. Build and run the Android application.
+
+Detailed setup information is available in [SETUP.md](SETUP.md).
+
+---
+
+## Local Configuration
+
+PNR EXPERT reads environment-specific configuration from the root `local.properties` file.
+
+This file must remain excluded from Git.
+
+Required properties:
+
+| Property | Purpose |
+|---|---|
+| `pnr.api.baseUrl` | HTTPS serverless backend address |
+| `pnr.githubRepoUrl` | Optional project repository address |
+
+The backend address must:
+
+- Use HTTPS.
+- End with `/`.
+- Not contain query parameters.
+- Not contain fragments.
+- Not contain embedded credentials.
+
+The repository address is optional for building the app, but required for its configured external project links to work.
+
+The Gradle build generates these BuildConfig fields:
+
+```kotlin
+BuildConfig.PNR_API_BASE_URL
+BuildConfig.GITHUB_REPO_URL
 ```
 
-Open the cloned project folder in Android Studio.
+The actual configured URLs are not committed to the repository.
 
-### Configure the Backend
+Ensure the root `.gitignore` contains:
 
-The Android application requires a separately configured HTTPS API endpoint for live checks.
-
-Open or create the root-level `local.properties` file.
-
-Add:
-
-```properties
-pnr.api.baseUrl=https://YOUR-BACKEND-ENDPOINT/
+```gitignore
+local.properties
 ```
 
-Replace the placeholder with the appropriate backend URL.
+**Security note:** BuildConfig values are included in the compiled application. This configuration prevents committing local URLs to Git, but it is not a mechanism for hiding secrets in the APK.
 
-The address must:
-
-- Use HTTPS
-- End with `/`
-- Not contain credentials
-- Not contain query parameters
-
-The Gradle configuration reads this property and exposes it through Android BuildConfig.
-
-**Do not commit `local.properties` to Git.**
-
-The backend URL is not an authentication secret and can be discovered from a compiled APK.
-
-### Build and Run
-
-1. Open the project in Android Studio.
-2. Configure `local.properties`.
-3. Sync Gradle.
-4. Select **Build → Make Project**.
-5. Choose an emulator or connected device.
-6. Run the `app` configuration.
-
-For additional setup details, see [SETUP.md](SETUP.md).
+Sensitive provider credentials must remain on the serverless backend.
 
 ---
 
 ## Backend API
 
-The Android application expects a compatible backend.
+The Android application expects a compatible HTTPS backend.
 
 ### Health Check
 
@@ -583,7 +808,7 @@ The Android application expects a compatible backend.
 GET /health
 ```
 
-### PNR Lookup
+### PNR Check
 
 ```http
 POST /v1/pnr/check
@@ -598,36 +823,38 @@ Example request:
 }
 ```
 
-This is an illustrative PNR number.
+The example number is illustrative.
 
-The backend must return a response compatible with the application's remote data models.
+The backend response must match the application's supported PNR data models.
 
-Provider-specific API keys, usage-management logic, and deployment configuration are not included in this README.
+Backend deployment, API credentials, provider quotas, and failover configuration are maintained separately.
 
 ---
 
 ## Privacy and Security
 
-PNR EXPERT uses local storage for saved journey information.
+PNR EXPERT is designed around local persistence and serverless live lookups.
 
-- Saved PNR data is stored on the device.
-- Live checks require network communication.
-- The serverless backend communicates with external data providers.
-- Third-party API keys must remain outside the Android APK.
-- No user account is required for the current app workflow.
-- Saved records can be deleted from the application.
+- Successfully retrieved PNR records are stored locally using Room.
+- Theme preferences are stored locally.
+- Saved PNR details can be viewed offline.
+- Live lookups require a network request.
+- The backend may forward PNR requests to external information providers.
+- Individual saved PNRs can be deleted from the app.
+- No user account is required for the current workflow.
+- Third-party provider credentials are not embedded in the app.
 
-PNR numbers and journey details may contain personal travel information.
+PNR numbers and railway reservation information may reveal personal travel details.
 
-Do not publish real PNR numbers, passenger information, credentials, or private service configuration in GitHub issues, screenshots, or logs.
+Users should avoid publishing real PNRs, passenger information, tickets, access tokens, or API credentials.
 
-Actual processing and retention by backend services depend on their deployment configuration and provider policies.
+Backend logs, request metadata, provider retention, and any applicable device-backup behavior must be assessed according to the actual deployed services.
+
+For privacy information, open **Settings → Policies & Legal**.
 
 ---
 
 ## Testing Checklist
-
-Before releasing a build, verify the following.
 
 ### PNR Functions
 
@@ -638,47 +865,61 @@ Before releasing a build, verify the following.
 - [ ] Duplicate prevention
 - [ ] Offline access
 - [ ] Manual refresh
-- [ ] Failed refresh preserves saved information
+- [ ] Failed refresh preserves saved data
 - [ ] Copy PNR
 - [ ] Delete PNR
-- [ ] Passenger status formatting
+- [ ] Passenger status display
 
-### Appearance
+### Reservation Information
+
+- [ ] CNF explanation
+- [ ] RAC explanation
+- [ ] WL explanation
+- [ ] Quota-specific waiting-list explanations
+- [ ] Unique status entries
+- [ ] Current status preferred over booking status
+- [ ] Fixed-width status column
+- [ ] Theme-independent badge colors
+- [ ] Theme-aware explanation text
+- [ ] Offline functionality
+
+### Themes
 
 - [ ] All eight appearance modes
 - [ ] All eight color palettes
-- [ ] Simplified backgrounds
-- [ ] Gradient backgrounds
-- [ ] Four different screen backgrounds
-- [ ] Dark text on light surfaces
-- [ ] Light text on dark surfaces
-- [ ] AMOLED contrast
-- [ ] High-contrast modes
-- [ ] Expandable Appearance selection
-- [ ] Expandable Color Palette selection
-- [ ] Theme preference persistence
+- [ ] Simplified background style
+- [ ] Gradient background style
+- [ ] Screen-specific backgrounds
+- [ ] Gradient accent surfaces
+- [ ] Gradient Add PNR button shape
+- [ ] Readable text contrast
+- [ ] AMOLED appearance
+- [ ] High-contrast appearances
+- [ ] Persistent theme preferences
 - [ ] Reset to Default
 
-### Navigation and Layout
+### Navigation and Legal
 
-- [ ] Instant forward navigation
-- [ ] Instant Back navigation
-- [ ] Predictive-back behavior
-- [ ] No status-bar overlap
-- [ ] Settings button at bottom-left
-- [ ] Add PNR button at bottom-right
-- [ ] PNR card scrolling
-- [ ] Small-screen compatibility
-- [ ] 12-hour time format
-- [ ] 24-hour time format
+- [ ] Home navigation
+- [ ] Add PNR navigation
+- [ ] Details navigation
+- [ ] Settings navigation
+- [ ] Policies & Legal navigation
+- [ ] Icon-only Back buttons
+- [ ] Disabled screen transitions
+- [ ] Report a Bug external link
+- [ ] Source Code external link
+- [ ] License external link
+- [ ] Missing project URL handled gracefully
+- [ ] Browser unavailable handled gracefully
 
 ---
 
 ## Current Limitations
 
-PNR EXPERT currently focuses on checking and saving PNR reservation information.
+PNR EXPERT focuses on checking and saving PNR reservation information.
 
-It does not provide:
+It does not currently provide:
 
 - Railway ticket booking
 - Ticket cancellation
@@ -687,7 +928,7 @@ It does not provide:
 - Automatic background reservation refresh
 - Official Indian Railways account integration
 
-Live PNR availability depends on the configured backend and external information providers.
+Live lookup availability and accuracy depend on the configured backend and external data providers.
 
 ---
 
@@ -697,33 +938,34 @@ PNR EXPERT is an independent application.
 
 It is **not affiliated with, endorsed by, or officially operated by Indian Railways, IRCTC, or the Government of India**.
 
-Railway reservation information may change. For important travel decisions, verify information through official railway channels.
+Railway reservation information may change after the last successful check.
+
+For important travel decisions, verify information through official railway channels.
 
 ---
 
 ## License
 
-This project is released under the **MIT License**.
+The project includes an MIT License.
 
 See [LICENSE.md](LICENSE.md).
 
-Third-party libraries and services remain subject to their respective licenses and terms.
+Third-party libraries, information providers, and external services remain subject to their respective licenses and terms.
 
 ---
 
-## Project Information
+## Application Information
 
 | Property | Value |
 |---|---|
-| Application | PNR EXPERT |
-| Repository | [ridamranjan/pnrenq](https://github.com/ridamranjan/pnrenq) |
+| Application name | PNR EXPERT |
 | Platform | Android |
 | Language | Kotlin |
 | UI | Jetpack Compose / Material 3 |
 | Architecture | Offline-first |
-| Local storage | Room |
+| Local storage | Room / SQLite |
 | Backend | Serverless HTTPS API |
 | Application ID | `com.first.pnrenq` |
-| Minimum Android API | 26 |
+| Minimum Android SDK | 26 |
 
 **PNR EXPERT — Your journeys, saved.**

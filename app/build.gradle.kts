@@ -1,12 +1,14 @@
+
 import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
 
-// Read the backend address from an ignored local file.
-
+// Load local configuration once.
+// The root local.properties file must remain ignored by Git.
 val localConfig = Properties().apply {
     val file = rootProject.file("local.properties")
 
@@ -15,7 +17,8 @@ val localConfig = Properties().apply {
     }
 }
 
-
+// Serverless backend endpoint.
+// Required for building the Android application.
 val pnrBackendUrl = localConfig
     .getProperty("pnr.api.baseUrl")
     ?.trim()
@@ -35,6 +38,19 @@ require(
     "pnr.api.baseUrl must be a valid HTTPS base URL ending with /."
 }
 
+// Optional GitHub repository URL.
+// This value is loaded from local.properties,
+// not hardcoded into version-controlled source code.
+val githubRepoUrl = localConfig
+    .getProperty("pnr.githubRepoUrl", "")
+    .trim()
+    .trimEnd('/')
+
+// Escape the string for the generated Java BuildConfig source.
+val escapedGithubUrl = githubRepoUrl
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
+
 android {
     namespace = "com.first.pnrenq"
 
@@ -44,6 +60,7 @@ android {
 
     defaultConfig {
         applicationId = "com.first.pnrenq"
+
         minSdk = 26
         targetSdk = 37
 
@@ -58,12 +75,19 @@ android {
             "PNR_API_BASE_URL",
             "\"$pnrBackendUrl\""
         )
+
+        buildConfigField(
+            "String",
+            "GITHUB_REPO_URL",
+            "\"$escapedGithubUrl\""
+        )
     }
 
     buildTypes {
         release {
             optimization {
                 enable = true
+
                 packageScope = setOf(
                     "androidx.**",
                     "kotlin.**",
@@ -113,9 +137,11 @@ dependencies {
     androidTestImplementation(
         platform(libs.androidx.compose.bom)
     )
+
     androidTestImplementation(
         libs.androidx.compose.ui.test.junit4
     )
+
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
 
