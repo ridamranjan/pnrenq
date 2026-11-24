@@ -147,13 +147,19 @@ fun DetailsScreen(
                         }
                     )
 
+
                     if (pnr.passengers.isNotEmpty()) {
                         PassengerListCard(pnr.passengers)
                     }
 
+                    // One shared explanation card for the entire PNR.
+                    // Each distinct current status appears only once.
+
                     JourneyInformationCard(pnr)
+                    ReservationInformationCard(pnr = pnr)
                     TicketInformationCard(pnr)
                     LastUpdateCard(pnr.lastCheckedAtMillis)
+
 
                     Spacer(Modifier.height(12.dp))
                 }
