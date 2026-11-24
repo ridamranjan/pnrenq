@@ -11,14 +11,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.first.pnrenq.ui.common.PnrBackButton
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -31,7 +28,8 @@ import androidx.compose.ui.unit.sp
 import com.first.pnrenq.domain.validation.PNR_LENGTH
 import com.first.pnrenq.domain.validation.isValidPnr
 import com.first.pnrenq.domain.validation.sanitizePnrInput
-
+import com.first.pnrenq.ui.common.PnrBackButton
+import com.first.pnrenq.ui.theme.PnrAccentSurface
 import com.first.pnrenq.ui.theme.PnrenqTheme
 import com.first.pnrenq.ui.theme.ThemeText as Text
 
@@ -68,8 +66,6 @@ fun AddPnrScreen(
     Scaffold(
         modifier = modifier,
         containerColor = Color.Transparent,
-
-        // Fixes black text on the transparent dark background.
         contentColor = scheme.onBackground,
 
         topBar = {
@@ -77,24 +73,21 @@ fun AddPnrScreen(
                 title = {
                     Text(
                         text = "Add PNR",
-                        color = scheme.onBackground,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = scheme.onBackground
                     )
                 },
-
                 navigationIcon = {
                     PnrBackButton(
                         onClick = onBack,
                         enabled = !isChecking
                     )
                 },
-
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                     scrolledContainerColor = Color.Transparent,
                     titleContentColor = scheme.onBackground,
-                    navigationIconContentColor = scheme.onBackground,
-                    actionIconContentColor = scheme.onBackground
+                    navigationIconContentColor = scheme.onBackground
                 )
             )
         }
@@ -106,19 +99,22 @@ fun AddPnrScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
-
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(20.dp)
         ) {
             Spacer(Modifier.height(8.dp))
 
-            Surface(
-                color = scheme.primaryContainer,
-                contentColor = scheme.onPrimaryContainer,
-                shape = CircleShape
+            // The existing 88dp circle now supports gradients.
+            PnrAccentSurface(
+                modifier = Modifier.size(88.dp),
+                backgroundColor = scheme.primaryContainer,
+                foregroundColor = scheme.onPrimaryContainer,
+                shape = CircleShape,
+                strength = 1.25f
             ) {
                 Box(
-                    modifier = Modifier.size(88.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -134,27 +130,26 @@ fun AddPnrScreen(
                 text = "Track a new journey",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = scheme.onBackground,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                color = scheme.onBackground
             )
 
             Text(
                 text = "Enter your 10-digit PNR number to " +
                         "check the latest railway reservation status.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = scheme.onBackground.copy(alpha = 0.88f),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                color = scheme.onBackground
             )
 
+            // Input card stays solid.
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
-
                 colors = CardDefaults.cardColors(
                     containerColor = scheme.surfaceContainerLow,
                     contentColor = scheme.onSurface
                 ),
-
                 border = BorderStroke(
                     1.dp,
                     scheme.outlineVariant
@@ -162,7 +157,8 @@ fun AddPnrScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement =
+                        Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
                         text = "PNR NUMBER",
@@ -173,15 +169,14 @@ fun AddPnrScreen(
 
                     OutlinedTextField(
                         value = input,
-
                         onValueChange = { value ->
                             input = sanitizePnrInput(value)
                             showValidationError = false
                         },
-
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isChecking,
                         singleLine = true,
+                        isError = showValidationError,
 
                         placeholder = {
                             Text(
@@ -191,9 +186,7 @@ fun AddPnrScreen(
                         },
 
                         shape = RoundedCornerShape(16.dp),
-                        isError = showValidationError,
 
-                        // Explicitly set the typed digits' color.
                         textStyle =
                             MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.SemiBold,
@@ -204,8 +197,7 @@ fun AddPnrScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = scheme.onSurface,
                             unfocusedTextColor = scheme.onSurface,
-                            disabledTextColor =
-                                scheme.onSurfaceVariant,
+                            disabledTextColor = scheme.onSurfaceVariant,
                             errorTextColor = scheme.onSurface,
 
                             focusedPlaceholderColor =
@@ -217,8 +209,7 @@ fun AddPnrScreen(
                                 scheme.onSurfaceVariant,
                             unfocusedSupportingTextColor =
                                 scheme.onSurfaceVariant,
-                            errorSupportingTextColor =
-                                scheme.error,
+                            errorSupportingTextColor = scheme.error,
 
                             focusedBorderColor = scheme.primary,
                             unfocusedBorderColor = scheme.outline,
@@ -239,9 +230,7 @@ fun AddPnrScreen(
                         ),
 
                         keyboardActions = KeyboardActions(
-                            onDone = {
-                                submit()
-                            }
+                            onDone = { submit() }
                         ),
 
                         supportingText = {
@@ -280,25 +269,20 @@ fun AddPnrScreen(
                             Text(
                                 text = errorMessage,
                                 modifier = Modifier.padding(14.dp),
-                                color = scheme.onErrorContainer,
                                 style =
-                                    MaterialTheme.typography.bodyMedium
+                                    MaterialTheme.typography.bodyMedium,
+                                color = scheme.onErrorContainer
                             )
                         }
                     }
 
                     Button(
-                        onClick = {
-                            submit()
-                        },
+                        onClick = { submit() },
                         enabled = !isChecking,
-
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(54.dp),
-
                         shape = RoundedCornerShape(16.dp),
-
                         colors = ButtonDefaults.buttonColors(
                             containerColor = scheme.primary,
                             contentColor = scheme.onPrimary
@@ -320,44 +304,49 @@ fun AddPnrScreen(
                         } else {
                             Text(
                                 text = if (valid) {
-                                    "Check PNR status  →"
+                                    "Check PNR status →"
                                 } else {
                                     "Check PNR status"
                                 },
-                                color = scheme.onPrimary,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                color = scheme.onPrimary
                             )
                         }
                     }
                 }
             }
 
-            Surface(
+            // Existing information card: gradient in Gradient mode.
+            PnrAccentSurface(
                 modifier = Modifier.fillMaxWidth(),
+                backgroundColor = scheme.secondaryContainer,
+                foregroundColor = scheme.onSecondaryContainer,
                 shape = RoundedCornerShape(20.dp),
-                color = scheme.secondaryContainer,
-                contentColor = scheme.onSecondaryContainer
+                strength = 1.10f
             ) {
                 Column(
                     modifier = Modifier.padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                    verticalArrangement =
+                        Arrangement.spacedBy(7.dp)
                 ) {
                     Text(
                         text = "Your journey, saved",
-                        color = scheme.onSecondaryContainer,
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = scheme.onSecondaryContainer
                     )
 
                     Text(
                         text = "Successful PNR checks are saved " +
                                 "automatically. You can view them " +
                                 "offline and refresh whenever you choose.",
-                        color = scheme.onSecondaryContainer,
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = scheme.onSecondaryContainer
                     )
                 }
             }
+
+            Spacer(Modifier.height(12.dp))
         }
     }
 }

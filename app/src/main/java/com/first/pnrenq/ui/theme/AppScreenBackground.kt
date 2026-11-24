@@ -4,25 +4,17 @@ package com.first.pnrenq.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-
 import kotlin.math.max
-
-/* =========================================================
-   SCREEN TYPES
-========================================================= */
 
 enum class PnrScreenType {
     HOME,
@@ -30,20 +22,6 @@ enum class PnrScreenType {
     ADD_PNR,
     SETTINGS
 }
-
-/* =========================================================
-   SCREEN-SPECIFIC BACKGROUND
-
-   One color system for the entire app.
-   Four different background patterns.
-
-   Supports:
-   - 8 appearance modes
-   - 8 palettes
-   - Simplified / Gradient
-   - AMOLED
-   - High contrast modes
-========================================================= */
 
 @Composable
 fun AppScreenBackground(
@@ -55,8 +33,8 @@ fun AppScreenBackground(
     val scheme = MaterialTheme.colorScheme
 
     val dark = isDarkAppearance(
-        mode = settings.mode,
-        systemDark = isSystemInDarkTheme()
+        settings.mode,
+        isSystemInDarkTheme()
     )
 
     val amoled = settings.mode == AppThemeMode.AMOLED
@@ -65,91 +43,64 @@ fun AppScreenBackground(
         settings.mode == AppThemeMode.HIGH_CONTRAST_LIGHT ||
                 settings.mode == AppThemeMode.HIGH_CONTRAST_DARK
 
+    val gradient =
+        settings.style == AppThemeStyle.GRADIENT
+
     val palette = paletteColors(settings.palette)
 
     val base = scheme.background
 
-    // The light palette shade acts as the accent.
-    // It is blended into the background at low intensity.
+    // All screens use the same selected palette.
     val accent = palette.light
 
-    /* =====================================================
-       SIMPLIFIED COLORS
-
-       Distinct but restrained solid backgrounds.
-
-       AMOLED remains black in Simplified mode.
-    ===================================================== */
-
-    val simplifiedColor = if (amoled) {
-        Color.Black
-    } else {
-        val amount = when (screen) {
-            PnrScreenType.HOME -> 0f
-            PnrScreenType.DETAILS -> if (dark) 0.020f else 0.012f
-            PnrScreenType.ADD_PNR -> if (dark) 0.035f else 0.025f
-            PnrScreenType.SETTINGS -> if (dark) 0.014f else 0.009f
-        }
-
-        lerp(base, accent, amount)
+    // Subtle coordinated solid backgrounds.
+    val solidAmount = when (screen) {
+        PnrScreenType.HOME -> 0.008f
+        PnrScreenType.DETAILS -> 0.015f
+        PnrScreenType.ADD_PNR -> 0.023f
+        PnrScreenType.SETTINGS -> 0.013f
     }
 
-    /* =====================================================
-       GRADIENT INTENSITY
-
-       Keep dark modes dark enough for white text.
-
-       Reduce gradients in high contrast modes.
-
-       AMOLED gets restrained color glow on black.
-    ===================================================== */
-
-    val intensity = when {
-        highContrast -> if (dark) 0.11f else 0.065f
-        amoled -> 0.23f
-        dark -> 0.21f
-        else -> 0.15f
+    val solidBackground = when {
+        amoled -> Color.Black
+        highContrast -> base
+        else -> lerp(base, accent, solidAmount)
     }
 
-    val gradientEnabled =
-        settings.style == AppThemeStyle.GRADIENT
+    // Noticeable gradients without making dark modes bright.
+    val strength = when {
+        highContrast && dark -> 0.12f
+        highContrast -> 0.12f
+        amoled -> 0.24f
+        dark -> 0.29f
+        else -> 0.26f
+    }
 
-    /* =====================================================
-       DRAW BACKGROUND
-
-       Cached brushes avoid repeated shader allocation
-       during ordinary frame drawing.
-    ===================================================== */
-
-    val backgroundModifier = Modifier.drawWithCache {
-
+    val paintedBackground = Modifier.drawWithCache {
         val width = size.width.coerceAtLeast(1f)
         val height = size.height.coerceAtLeast(1f)
-
-        val maxDimension = max(width, height)
+        val largestSide = max(width, height)
 
         val mainBrush: Brush? =
-            if (!gradientEnabled) {
+            if (!gradient) {
                 null
             } else {
                 when (screen) {
 
-                    /* -------------------------------------
-                       HOME — SIGNATURE GRADIENT
-                    ------------------------------------- */
-
+                    // Accent near the top, fading downward.
                     PnrScreenType.HOME -> {
                         Brush.verticalGradient(
                             colors = listOf(
+                                lerp(base, accent, strength),
                                 lerp(
                                     base,
                                     accent,
-                                    intensity
+                                    strength * 0.57f
                                 ),
                                 lerp(
                                     base,
                                     accent,
-                                    intensity * 0.48f
+                                    strength * 0.15f
                                 ),
                                 base
                             ),
@@ -158,50 +109,45 @@ fun AppScreenBackground(
                         )
                     }
 
-                    /* -------------------------------------
-                       DETAILS — JOURNEY GRADIENT
-
-                       Most noticeable behind the train
-                       summary, fading toward lower cards.
-                    ------------------------------------- */
-
+                    // Accent behind the train summary.
                     PnrScreenType.DETAILS -> {
                         Brush.verticalGradient(
                             colors = listOf(
                                 lerp(
                                     base,
                                     accent,
-                                    intensity * 1.13f
+                                    strength * 1.05f
                                 ),
                                 lerp(
                                     base,
                                     accent,
-                                    intensity * 0.20f
+                                    strength * 0.55f
                                 ),
-                                base,
+                                lerp(
+                                    base,
+                                    accent,
+                                    strength * 0.10f
+                                ),
                                 base
                             ),
                             startY = 0f,
-                            endY = height * 0.85f
+                            endY = height * 0.90f
                         )
                     }
 
-                    /* -------------------------------------
-                       ADD PNR — DIAGONAL GRADIENT
-                    ------------------------------------- */
-
+                    // Diagonal background for the PNR form.
                     PnrScreenType.ADD_PNR -> {
                         Brush.linearGradient(
                             colors = listOf(
                                 lerp(
                                     base,
                                     accent,
-                                    intensity * 0.85f
+                                    strength
                                 ),
                                 lerp(
                                     base,
                                     accent,
-                                    intensity * 0.33f
+                                    strength * 0.45f
                                 ),
                                 base
                             ),
@@ -210,92 +156,74 @@ fun AppScreenBackground(
                         )
                     }
 
-                    /* -------------------------------------
-                       SETTINGS — CORNER GLOWS
-
-                       Drawn separately below.
-                    ------------------------------------- */
-
+                    // Settings uses radial glows instead.
                     PnrScreenType.SETTINGS -> null
                 }
             }
 
-        // Ambient gradients are used only on Settings.
-        val firstGlow =
-            if (
-                gradientEnabled &&
-                screen == PnrScreenType.SETTINGS
-            ) {
+        val topGlow =
+            if (gradient && screen == PnrScreenType.SETTINGS) {
                 Brush.radialGradient(
                     colors = listOf(
                         accent.copy(
-                            alpha = if (dark) 0.19f else 0.12f
+                            alpha = when {
+                                highContrast -> 0.13f
+                                amoled -> 0.24f
+                                dark -> 0.29f
+                                else -> 0.25f
+                            }
                         ),
                         Color.Transparent
                     ),
                     center = Offset(width, 0f),
-                    radius = maxDimension * 0.92f
+                    radius = largestSide * 0.95f
                 )
             } else {
                 null
             }
 
-        val secondGlow =
-            if (
-                gradientEnabled &&
-                screen == PnrScreenType.SETTINGS
-            ) {
+        val bottomGlow =
+            if (gradient && screen == PnrScreenType.SETTINGS) {
                 Brush.radialGradient(
                     colors = listOf(
                         accent.copy(
-                            alpha = if (dark) 0.12f else 0.075f
+                            alpha = when {
+                                highContrast -> 0.07f
+                                amoled -> 0.13f
+                                dark -> 0.17f
+                                else -> 0.14f
+                            }
                         ),
                         Color.Transparent
                     ),
                     center = Offset(0f, height),
-                    radius = maxDimension * 0.82f
+                    radius = largestSide * 0.85f
                 )
             } else {
                 null
             }
 
         onDrawBehind {
-
-            if (!gradientEnabled) {
-
-                drawRect(
-                    color = simplifiedColor
-                )
-
+            if (!gradient) {
+                drawRect(color = solidBackground)
             } else {
+                // This is the bottom-most visible screen layer.
+                drawRect(color = base)
 
-                // Opaque base prevents the previous screen
-                // background from showing through.
-                drawRect(
-                    color = base
-                )
-
-                mainBrush?.let { brush ->
-                    drawRect(brush = brush)
+                mainBrush?.let {
+                    drawRect(brush = it)
                 }
 
-                firstGlow?.let { brush ->
-                    drawRect(brush = brush)
+                topGlow?.let {
+                    drawRect(brush = it)
                 }
 
-                secondGlow?.let { brush ->
-                    drawRect(brush = brush)
+                bottomGlow?.let {
+                    drawRect(brush = it)
                 }
             }
         }
     }
-
-    /* =====================================================
-       CORRECT FOREGROUND FOR EVERY SCREEN
-
-       Cards can still override this through their
-       Material contentColor properties.
-    ===================================================== */
 
     CompositionLocalProvider(
         LocalContentColor provides scheme.onBackground
@@ -303,7 +231,7 @@ fun AppScreenBackground(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .then(backgroundModifier)
+                .then(paintedBackground)
         ) {
             content()
         }
