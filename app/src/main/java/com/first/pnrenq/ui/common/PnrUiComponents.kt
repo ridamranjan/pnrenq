@@ -1,4 +1,3 @@
-
 package com.first.pnrenq.ui.common
 
 import androidx.compose.foundation.layout.*
@@ -9,154 +8,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 
 import com.first.pnrenq.domain.model.StatusCategory
 import com.first.pnrenq.domain.model.statusCategoryOf
-import com.first.pnrenq.ui.theme.AppTimeFormat
 import com.first.pnrenq.ui.theme.LocalPnrTimeFormat
 import com.first.pnrenq.ui.theme.ThemeText as Text
 
-import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeFormatterBuilder
-import java.util.Locale
-
-private val longDateFormatter = DateTimeFormatter.ofPattern(
-    "d MMM yyyy",
-    Locale.getDefault()
-)
-
-private val shortDateFormatter = DateTimeFormatter.ofPattern(
-    "d MMM",
-    Locale.getDefault()
-)
-
-private val amPmParser = DateTimeFormatterBuilder()
-    .parseCaseInsensitive()
-    .appendPattern("h:mm a")
-    .toFormatter(Locale.ENGLISH)
-
-private val amPmSecondsParser = DateTimeFormatterBuilder()
-    .parseCaseInsensitive()
-    .appendPattern("h:mm:ss a")
-    .toFormatter(Locale.ENGLISH)
-
-fun availableText(value: String?): String? {
-    val result = value?.trim() ?: return null
-
-    return result.takeIf {
-        it.isNotBlank() &&
-                !it.equals("null", true) &&
-                !it.equals("unknown", true) &&
-                !it.equals("not available", true) &&
-                !it.equals("n/a", true)
-    }
-}
-
-fun formatJourneyDate(date: LocalDate): String =
-    date.format(longDateFormatter)
-
-fun formatArrivalDate(value: String?): String? {
-    val valid = availableText(value) ?: return null
-
-    return try {
-        LocalDate.parse(valid).format(longDateFormatter)
-    } catch (_: Exception) {
-        valid
-    }
-}
-
-fun parseClockTime(value: String?): LocalTime? {
-    val raw = availableText(value) ?: return null
-
-    val normalized = raw
-        .uppercase(Locale.ENGLISH)
-        .replace(
-            Regex("(?<=\\d)(AM|PM)$"),
-            " $1"
-        )
-        .replace(Regex("\\s+"), " ")
-
-    return try {
-        LocalTime.parse(normalized)
-    } catch (_: Exception) {
-        try {
-            LocalTime.parse(normalized, amPmParser)
-        } catch (_: Exception) {
-            try {
-                LocalTime.parse(
-                    normalized,
-                    amPmSecondsParser
-                )
-            } catch (_: Exception) {
-                null
-            }
-        }
-    }
-}
-
-fun formatClockTime(
-    value: String?,
-    format: AppTimeFormat
-): String? {
-    val valid = availableText(value) ?: return null
-
-    val time = parseClockTime(valid) ?: return valid
-
-    val pattern =
-        if (format == AppTimeFormat.HOUR_12) {
-            "h:mm a"
-        } else {
-            "HH:mm"
-        }
-
-    return time.format(
-        DateTimeFormatter.ofPattern(
-            pattern,
-            Locale.ENGLISH
-        )
-    )
-}
-
-fun formatLastChecked(
-    epochMillis: Long,
-    format: AppTimeFormat = AppTimeFormat.HOUR_24
-): String {
-    val pattern =
-        if (format == AppTimeFormat.HOUR_12) {
-            "d MMM, h:mm a"
-        } else {
-            "d MMM, HH:mm"
-        }
-
-    return Instant.ofEpochMilli(epochMillis)
-        .atZone(ZoneId.systemDefault())
-        .format(
-            DateTimeFormatter.ofPattern(
-                pattern,
-                Locale.ENGLISH
-            )
-        )
-}
-
-fun formatJourneyDuration(value: String?): String? {
-    val valid = availableText(value) ?: return null
-    val parts = valid.split(":")
-
-    if (parts.size != 2) return valid
-
-    val hours = parts[0].toIntOrNull() ?: return valid
-    val minutes = parts[1].toIntOrNull() ?: return valid
-
-    if (hours < 0 || minutes !in 0..59) return valid
-
-    return "${hours}h ${minutes}m"
-}
 
 @Composable
 fun StatusChip(
@@ -188,7 +49,7 @@ fun StatusChip(
     }
 
     Surface(
-        modifier = modifier,
+        modifier = modifier.widthIn(max = 160.dp),
         color = colors.first,
         contentColor = colors.second,
         shape = CircleShape
@@ -202,8 +63,7 @@ fun StatusChip(
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             color = colors.second,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -221,7 +81,6 @@ fun JourneyTimeline(
     compact: Boolean = false
 ) {
     val format = LocalPnrTimeFormat.current
-    val foreground = LocalContentColor.current
 
     val departure = formatClockTime(
         departureTime,
@@ -238,69 +97,119 @@ fun JourneyTimeline(
 
     val durationText = formatJourneyDuration(duration)
 
-    val departureDate =
-        if (compact) {
-            journeyDate.format(shortDateFormatter)
-        } else {
-            journeyDate.format(longDateFormatter)
-        }
+    val departureDate = formatJourneyDate(
+        journeyDate,
+        compact
+    )
 
-    val arrivalDateText =
-        availableText(arrivalDate)?.let {
-            try {
-                LocalDate.parse(it).format(
-                    if (compact) shortDateFormatter
-                    else longDateFormatter
+    val arrivalDateText = formatArrivalDate(
+        arrivalDate,
+        compact
+    )
+
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        val stacked =
+            maxWidth < 250.dp ||
+                    LocalDensity.current.fontScale >= 1.3f
+
+        if (stacked) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TimelineStation(
+                    departure,
+                    from,
+                    departureDate,
+                    false,
+                    compact,
+                    Modifier.fillMaxWidth()
                 )
-            } catch (_: Exception) {
-                it
+
+                TimelineDirection(
+                    durationText,
+                    vertical = true
+                )
+
+                TimelineStation(
+                    arrival,
+                    to,
+                    arrivalDateText,
+                    false,
+                    compact,
+                    Modifier.fillMaxWidth()
+                )
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TimelineStation(
+                    departure,
+                    from,
+                    departureDate,
+                    false,
+                    compact,
+                    Modifier.weight(1f)
+                )
+
+                TimelineDirection(
+                    durationText,
+                    vertical = false,
+                    modifier = Modifier.weight(0.7f)
+                )
+
+                TimelineStation(
+                    arrival,
+                    to,
+                    arrivalDateText,
+                    true,
+                    compact,
+                    Modifier.weight(1f)
+                )
             }
         }
+    }
+}
 
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+@Composable
+private fun TimelineDirection(
+    duration: String?,
+    vertical: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val foreground = LocalContentColor.current
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = if (vertical) {
+            Alignment.Start
+        } else {
+            Alignment.CenterHorizontally
+        },
+        verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
-        TimelineStation(
-            time = departure,
-            station = from,
-            date = departureDate,
-            alignEnd = false,
-            compact = compact,
-            modifier = Modifier.weight(1f)
+        Text(
+            text = if (vertical) "↓" else "→",
+            modifier = Modifier.clearAndSetSemantics {},
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = foreground
         )
 
-        Column(
-            modifier = Modifier.weight(0.7f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement =
-                Arrangement.spacedBy(5.dp)
-        ) {
+        if (duration != null) {
             Text(
-                text = "→",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                text = duration,
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = if (vertical) {
+                    TextAlign.Start
+                } else {
+                    TextAlign.Center
+                },
                 color = foreground
             )
-
-            if (durationText != null) {
-                Text(
-                    text = durationText,
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center,
-                    color = foreground.copy(alpha = 0.82f)
-                )
-            }
         }
-
-        TimelineStation(
-            time = arrival,
-            station = to,
-            date = arrivalDateText,
-            alignEnd = true,
-            compact = compact,
-            modifier = Modifier.weight(1f)
-        )
     }
 }
 
@@ -324,8 +233,7 @@ private fun TimelineStation(
     Column(
         modifier = modifier,
         horizontalAlignment = alignment,
-        verticalArrangement =
-            Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         if (time != null) {
             Text(
@@ -337,8 +245,7 @@ private fun TimelineStation(
                 },
                 fontWeight = FontWeight.Bold,
                 color = foreground,
-                textAlign = textAlignment,
-                maxLines = 2
+                textAlign = textAlignment
             )
         }
 
@@ -348,9 +255,7 @@ private fun TimelineStation(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = foreground,
-                textAlign = textAlignment,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                textAlign = textAlignment
             )
         }
 
@@ -358,9 +263,8 @@ private fun TimelineStation(
             Text(
                 text = date,
                 style = MaterialTheme.typography.bodySmall,
-                color = foreground.copy(alpha = 0.82f),
-                textAlign = textAlignment,
-                maxLines = 1
+                color = foreground,
+                textAlign = textAlignment
             )
         }
     }

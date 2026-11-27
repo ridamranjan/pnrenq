@@ -1,4 +1,3 @@
-
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.first.pnrenq.ui.legal
@@ -98,7 +97,7 @@ fun PoliciesScreen(
                     )
 
                     Text(
-                        text = "Last updated: 24 November 2026",
+                        text = "Last updated: 27 November 2026",
                         style =
                             MaterialTheme.typography.labelSmall,
                         color = scheme.onPrimaryContainer
@@ -142,16 +141,20 @@ fun PoliciesScreen(
                             "Room database so you can view them offline.",
 
                     "Opening a saved record does not " +
-                            "automatically start another online check."
+                            "automatically start another online check.",
+
+                    "Saved records use Android app-private storage. " +
+                            "The app does not add its own database encryption."
                 )
             )
 
             LegalSectionCard(
                 title = "3. Internet Requests",
                 paragraphs = listOf(
-                    "When you add or manually refresh a PNR, " +
+                    "When a live lookup is needed, including a manual refresh, " +
                             "the PNR number is sent through HTTPS " +
-                            "to the configured serverless backend.",
+                            "to the configured serverless backend. " +
+                            "Adding an already readable saved PNR can reuse local data.",
 
                     "The backend may forward the PNR to " +
                             "third-party railway information " +
@@ -177,11 +180,14 @@ fun PoliciesScreen(
                             "using the Delete action. Clearing app " +
                             "data also removes locally stored records.",
 
-                    "Device backup and restore settings may " +
-                            "affect whether local data is backed up. " +
-                            "Deleting a local record does not itself " +
-                            "request deletion of data or logs " +
-                            "held by external services."
+                    "The app disables automatic backup in its manifest " +
+                            "and excludes its database and preferences from " +
+                            "the configured backup and device-transfer rules. " +
+                            "Actual behavior may vary by device and Android version.",
+
+                    "Deleting a local record is not a guaranteed secure erase " +
+                            "and does not itself remove clipboard copies or request " +
+                            "deletion of data or logs held by external services."
                 )
             )
 
@@ -197,6 +203,24 @@ fun PoliciesScreen(
                             "passenger names, contact details, " +
                             "tickets, API keys or other personal " +
                             "information in public issues."
+                )
+            )
+
+            LegalSectionCard(
+                title = "6. Clipboard and Screen Visibility",
+                paragraphs = listOf(
+                    "The Copy PNR buttons copy the complete PNR to the Android " +
+                            "system clipboard and mark the clip as sensitive. " +
+                            "Supported Android versions can hide its preview.",
+
+                    "This flag does not encrypt the clipboard or prevent pasting. " +
+                            "Clipboard access, history and retention depend on " +
+                            "Android, your keyboard and other permitted apps. " +
+                            "Avoid pasting PNRs into untrusted services.",
+
+                    "Screenshots and screen sharing are not blocked by the app. " +
+                            "Avoid sharing screens or images containing real " +
+                            "PNR numbers or passenger information."
                 )
             )
 

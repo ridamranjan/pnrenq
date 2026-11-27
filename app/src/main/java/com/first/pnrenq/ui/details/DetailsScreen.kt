@@ -1,13 +1,9 @@
-
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.first.pnrenq.ui.details
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -20,12 +16,20 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -33,30 +37,50 @@ import com.first.pnrenq.R
 import com.first.pnrenq.data.mock.MockPnrData
 import com.first.pnrenq.domain.model.PassengerStatus
 import com.first.pnrenq.domain.model.PnrInfo
+import com.first.pnrenq.domain.model.passengerStatusPresentation
+import com.first.pnrenq.ui.common.copyPnrToClipboard
+import com.first.pnrenq.ui.common.PnrFeedbackEffect
+import com.first.pnrenq.ui.common.PnrLoadWarning
+import com.first.pnrenq.ui.state.ScopedPnrFeedback
+import com.first.pnrenq.ui.state.PnrRecordState
 import com.first.pnrenq.ui.common.JourneyTimeline
-import com.first.pnrenq.ui.common.PnrBackButton
+import com.first.pnrenq.ui.common.PnrAdaptiveTopBar
 import com.first.pnrenq.ui.common.availableText
 import com.first.pnrenq.ui.common.PnrNumberBubble
 import com.first.pnrenq.ui.common.formatArrivalDate
+import com.first.pnrenq.ui.common.formatDistanceKm
+import com.first.pnrenq.ui.common.farePresentation
 import com.first.pnrenq.ui.common.formatLastChecked
+import com.first.pnrenq.ui.common.pnrControlColor
 import com.first.pnrenq.ui.theme.LocalPnrTimeFormat
+import com.first.pnrenq.ui.theme.LocalPnrVisualSettings
 import com.first.pnrenq.ui.theme.PnrAccentSurface
 import com.first.pnrenq.ui.theme.PnrenqTheme
+import com.first.pnrenq.ui.theme.PnrBadgeColors
+import com.first.pnrenq.ui.theme.isDarkAppearance
+import com.first.pnrenq.ui.theme.passengerBadgeColors
+import com.first.pnrenq.ui.theme.pnrAccentColors
 import com.first.pnrenq.ui.theme.ThemeText as Text
-
-import java.util.Locale
 
 @Composable
 fun DetailsScreen(
     pnr: PnrInfo?,
     isRefreshing: Boolean,
-    message: String?,
-    onMessageShown: () -> Unit,
     onRefresh: () -> Unit,
     onDelete: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    isLoading: Boolean = false
+    isLoading: Boolean = false,
+    recordState: PnrRecordState = when {
+        pnr != null -> PnrRecordState.READABLE
+        isLoading -> PnrRecordState.LOADING
+        else -> PnrRecordState.MISSING
+    },
+    loadError: String? = null,
+    onRetry: () -> Unit = {},
+    feedback: ScopedPnrFeedback? = null,
+    onFeedbackShown: (String, Long) -> Unit = { _, _ -> },
+    isBusy: Boolean = isRefreshing
 ) {
     val scheme = MaterialTheme.colorScheme
     val snackbarHostState = remember { SnackbarHostState() }
@@ -65,10 +89,15 @@ fun DetailsScreen(
         mutableStateOf(false)
     }
 
-    LaunchedEffect(message) {
-        if (message != null) {
-            onMessageShown()
-            snackbarHostState.showSnackbar(message)
+    PnrFeedbackEffect(
+        snackbarHostState,
+        feedback,
+        onFeedbackShown
+    )
+
+    LaunchedEffect(pnr?.pnrNumber) {
+        if (pnr == null) {
+            showDeleteDialog = false
         }
     }
 
@@ -76,56 +105,100 @@ fun DetailsScreen(
         modifier = modifier,
         containerColor = Color.Transparent,
         contentColor = scheme.onBackground,
-
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Ticket details",
-                        fontWeight = FontWeight.Bold,
-                        color = scheme.onBackground
-                    )
-                },
-                navigationIcon = {
-                    PnrBackButton(onClick = onBack)
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                    titleContentColor = scheme.onBackground,
-                    navigationIconContentColor = scheme.onBackground
-                )
+            PnrAdaptiveTopBar(
+                title = "Ticket details",
+                onBack = onBack
             )
         },
-
         snackbarHost = {
             SnackbarHost(snackbarHostState)
         }
     ) { padding ->
-
         when {
-            isLoading && pnr == null -> {
+            recordState == PnrRecordState.LOADING && pnr == null -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(
+                        modifier = Modifier.semantics {
+                            contentDescription = "Loading ticket details"
+                        }
+                    )
                 }
             }
 
             pnr == null -> {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "This PNR is no longer saved.",
-                        color = scheme.onBackground
-                    )
+                    when (recordState) {
+                        PnrRecordState.UNREADABLE -> {
+                            Text(
+                                text = "Saved PNR information is unreadable.",
+                                modifier = Modifier.semantics {
+                                    liveRegion = LiveRegionMode.Polite
+                                },
+                                textAlign = TextAlign.Center,
+                                color = scheme.onBackground
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Button(
+                                onClick = onRefresh,
+                                enabled = !isBusy && !isLoading
+                            ) {
+                                Text(
+                                    if (isRefreshing) {
+                                        "Repairing PNR..."
+                                    } else {
+                                        "Refresh to repair"
+                                    }
+                                )
+                            }
+                        }
+
+                        PnrRecordState.UNAVAILABLE -> {
+                            Text(
+                                text = loadError
+                                    ?: "Unable to load saved PNRs. Please retry.",
+                                modifier = Modifier.semantics {
+                                    liveRegion = LiveRegionMode.Polite
+                                },
+                                textAlign = TextAlign.Center,
+                                color = scheme.onBackground
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Button(
+                                onClick = onRetry,
+                                enabled = !isLoading
+                            ) {
+                                Text("Try again")
+                            }
+                        }
+
+                        else -> {
+                            Text(
+                                text = "This PNR is no longer saved.",
+                                modifier = Modifier.semantics {
+                                    liveRegion = LiveRegionMode.Polite
+                                },
+                                color = scheme.onBackground
+                            )
+                        }
+                    }
                 }
             }
 
@@ -136,18 +209,25 @@ fun DetailsScreen(
                         .padding(padding)
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
-                    verticalArrangement =
-                        Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    if (loadError != null) {
+                        PnrLoadWarning(
+                            loadError,
+                            isLoading,
+                            onRetry
+                        )
+                    }
+
                     TrainSummaryCard(
                         pnr = pnr,
                         isRefreshing = isRefreshing,
+                        isBusy = isBusy,
                         onRefresh = onRefresh,
                         onDelete = {
                             showDeleteDialog = true
                         }
                     )
-
 
                     if (pnr.passengers.isNotEmpty()) {
                         PassengerListCard(pnr.passengers)
@@ -161,14 +241,13 @@ fun DetailsScreen(
                     TicketInformationCard(pnr)
                     LastUpdateCard(pnr.lastCheckedAtMillis)
 
-
                     Spacer(Modifier.height(12.dp))
                 }
             }
         }
     }
 
-    if (showDeleteDialog && pnr != null && !isRefreshing) {
+    if (showDeleteDialog && pnr != null) {
         AlertDialog(
             onDismissRequest = {
                 showDeleteDialog = false
@@ -184,14 +263,22 @@ fun DetailsScreen(
             },
             confirmButton = {
                 TextButton(
+                    enabled = !isBusy,
                     onClick = {
                         showDeleteDialog = false
-                        onDelete()
+
+                        if (!isBusy) {
+                            onDelete()
+                        }
                     }
                 ) {
                     Text(
                         text = "Delete",
-                        color = scheme.error
+                        color = if (isBusy) {
+                            scheme.onSurface.copy(alpha = 0.38f)
+                        } else {
+                            scheme.error
+                        }
                     )
                 }
             },
@@ -211,204 +298,287 @@ fun DetailsScreen(
 /* =========================================================
    TRAIN SUMMARY — GRADIENT ACCENT SURFACE
 ========================================================= */
+
 @Composable
 private fun TrainSummaryCard(
     pnr: PnrInfo,
     isRefreshing: Boolean,
+    isBusy: Boolean,
     onRefresh: () -> Unit,
     onDelete: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
-    val context = LocalContext.current
+    val settings = LocalPnrVisualSettings.current
+
+    val dark = isDarkAppearance(
+        settings.mode,
+        isSystemInDarkTheme()
+    )
+
+    val accentStops = remember(
+        scheme,
+        settings,
+        dark
+    ) {
+        pnrAccentColors(
+            baseColor = scheme.primaryContainer,
+            foregroundColor = scheme.onPrimaryContainer,
+            settings = settings,
+            dark = dark,
+            strength = 1.15f
+        )
+    }
+
+    // Account for the translucent circular action-button surface.
+    val actionBackgrounds = remember(
+        accentStops,
+        scheme.onPrimaryContainer
+    ) {
+        listOf(
+            accentStops.map {
+                scheme.onPrimaryContainer
+                    .copy(alpha = 0.10f)
+                    .compositeOver(it)
+            }
+        )
+    }
 
     PnrAccentSurface(
         modifier = Modifier.fillMaxWidth(),
-
         backgroundColor = scheme.primaryContainer,
         foregroundColor = scheme.onPrimaryContainer,
-
         shape = RoundedCornerShape(25.dp),
-
         strength = 1.15f,
-
         border = BorderStroke(
             1.dp,
             scheme.primary.copy(alpha = 0.24f)
         )
     ) {
-
-        Column(
-            modifier = Modifier.padding(18.dp),
-
-            verticalArrangement =
-                Arrangement.spacedBy(12.dp)
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
         ) {
+            val stacked =
+                maxWidth < 240.dp ||
+                        LocalDensity.current.fontScale >= 1.3f
 
-            /* =====================================
-               TRAIN NUMBER AND ACTION BUTTONS
-            ===================================== */
-
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-
-                verticalAlignment =
-                    Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
+                /* ---------- Train number and actions ---------- */
 
-                    color = scheme.onPrimaryContainer.copy(
-                        alpha = 0.10f
-                    )
-                ) {
+                if (stacked) {
+                    TrainNumberTag(pnr.trainNumber)
 
-                    Text(
-                        text = "TRAIN ${pnr.trainNumber}",
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TrainSummaryActions(
+                            pnr = pnr,
+                            isRefreshing = isRefreshing,
+                            isBusy = isBusy,
+                            backgrounds = actionBackgrounds,
+                            onRefresh = onRefresh,
+                            onDelete = onDelete
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            TrainNumberTag(pnr.trainNumber)
+                        }
 
-                        modifier = Modifier.padding(
-                            horizontal = 12.dp,
-                            vertical = 7.dp
-                        ),
-
-                        style =
-                            MaterialTheme.typography.labelMedium,
-
-                        fontWeight = FontWeight.Bold,
-
-                        color = scheme.onPrimaryContainer
-                    )
+                        TrainSummaryActions(
+                            pnr = pnr,
+                            isRefreshing = isRefreshing,
+                            isBusy = isBusy,
+                            backgrounds = actionBackgrounds,
+                            onRefresh = onRefresh,
+                            onDelete = onDelete
+                        )
+                    }
                 }
 
-                Spacer(
-                    Modifier.weight(1f)
+                /* ---------- Train name ---------- */
+
+                Text(
+                    text = pnr.trainName,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.onPrimaryContainer
                 )
 
-                TrainActionIcon(
-                    icon = R.drawable.ic_pnr_refresh,
-                    description = "Refresh PNR",
-                    enabled = !isRefreshing,
-                    loading = isRefreshing,
-                    onClick = onRefresh
-                )
+                /* ---------- PNR number and copy ---------- */
 
-                Spacer(
-                    Modifier.width(5.dp)
-                )
-
-                TrainActionIcon(
-                    icon = R.drawable.ic_pnr_delete,
-                    description = "Delete PNR",
-                    enabled = !isRefreshing,
-                    destructive = true,
-                    onClick = onDelete
-                )
-            }
-
-            /* =====================================
-               TRAIN NAME
-            ===================================== */
-
-            Text(
-                text = pnr.trainName,
-
-                style =
-                    MaterialTheme.typography.headlineSmall,
-
-                fontWeight = FontWeight.Bold,
-                color = scheme.onPrimaryContainer,
-                maxLines = 2
-            )
-
-            /* =====================================
-               PNR NUMBER BUBBLE AND COPY BUTTON
-            ===================================== */
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                Box(
-                    modifier = Modifier.weight(1f),
-
-                    contentAlignment = Alignment.CenterStart
-                ) {
-
+                if (stacked) {
                     PnrNumberBubble(
                         pnrNumber = pnr.pnrNumber,
                         emphasized = true
                     )
-                }
 
-                Spacer(
-                    Modifier.width(8.dp)
-                )
-
-                IconButton(
-                    onClick = {
-
-                        val clipboard =
-                            context.getSystemService(
-                                Context.CLIPBOARD_SERVICE
-                            ) as ClipboardManager
-
-                        clipboard.setPrimaryClip(
-                            ClipData.newPlainText(
-                                "PNR",
-                                pnr.pnrNumber
-                            )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        DetailsCopyButton(
+                            pnr = pnr,
+                            backgrounds = listOf(accentStops)
                         )
                     }
-                ) {
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            PnrNumberBubble(
+                                pnrNumber = pnr.pnrNumber,
+                                emphasized = true
+                            )
+                        }
 
-                    Icon(
-                        painter = painterResource(
-                            R.drawable.ic_pnr_copy
-                        ),
+                        Spacer(Modifier.width(8.dp))
 
-                        contentDescription = "Copy PNR",
+                        DetailsCopyButton(
+                            pnr = pnr,
+                            backgrounds = listOf(accentStops)
+                        )
+                    }
+                }
 
-                        tint = scheme.onPrimaryContainer,
+                HorizontalDivider(
+                    color = scheme.onPrimaryContainer.copy(alpha = 0.20f)
+                )
 
-                        modifier = Modifier.size(21.dp)
+                /* ---------- Journey timeline ---------- */
+
+                JourneyTimeline(
+                    fromStation = pnr.fromStation,
+                    toStation = pnr.toStation,
+                    journeyDate = pnr.journeyDate,
+                    departureTime = pnr.details.departureTime,
+                    arrivalDate = pnr.details.arrivalDate,
+                    arrivalTime = pnr.details.arrivalTime,
+                    duration = pnr.details.duration
+                )
+
+                /* ---------- Refresh progress ---------- */
+
+                if (isRefreshing) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics {
+                                contentDescription = "PNR operation in progress"
+                                liveRegion = LiveRegionMode.Polite
+                            }
                     )
                 }
             }
-
-            HorizontalDivider(
-                color = scheme.onPrimaryContainer.copy(
-                    alpha = 0.20f
-                )
-            )
-
-            /* =====================================
-               JOURNEY TIMELINE
-            ===================================== */
-
-            JourneyTimeline(
-                fromStation = pnr.fromStation,
-                toStation = pnr.toStation,
-                journeyDate = pnr.journeyDate,
-                departureTime = pnr.details.departureTime,
-                arrivalDate = pnr.details.arrivalDate,
-                arrivalTime = pnr.details.arrivalTime,
-                duration = pnr.details.duration
-            )
-
-            /* =====================================
-               REFRESH PROGRESS
-            ===================================== */
-
-            if (isRefreshing) {
-
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
         }
+    }
+}
+
+@Composable
+private fun TrainNumberTag(
+    trainNumber: String
+) {
+    val scheme = MaterialTheme.colorScheme
+
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = scheme.onPrimaryContainer.copy(alpha = 0.10f)
+    ) {
+        Text(
+            text = "TRAIN $trainNumber",
+            modifier = Modifier.padding(
+                horizontal = 12.dp,
+                vertical = 7.dp
+            ),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onPrimaryContainer
+        )
+    }
+}
+
+@Composable
+private fun TrainSummaryActions(
+    pnr: PnrInfo,
+    isRefreshing: Boolean,
+    isBusy: Boolean,
+    backgrounds: List<List<Color>>,
+    onRefresh: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TrainActionIcon(
+            icon = R.drawable.ic_pnr_refresh,
+            description =
+                "Refresh PNR ending in ${pnr.pnrNumber.takeLast(4)}",
+            enabled = !isBusy,
+            loading = isRefreshing,
+            backgrounds = backgrounds,
+            onClick = onRefresh
+        )
+
+        TrainActionIcon(
+            icon = R.drawable.ic_pnr_delete,
+            description =
+                "Delete saved PNR ending in ${pnr.pnrNumber.takeLast(4)}",
+            enabled = !isBusy,
+            destructive = true,
+            backgrounds = backgrounds,
+            onClick = onDelete
+        )
+    }
+}
+
+@Composable
+private fun DetailsCopyButton(
+    pnr: PnrInfo,
+    backgrounds: List<List<Color>>
+) {
+    val context = LocalContext.current
+    val scheme = MaterialTheme.colorScheme
+
+    IconButton(
+        onClick = {
+            copyPnrToClipboard(
+                context,
+                pnr.pnrNumber
+            )
+        },
+        modifier = Modifier.size(48.dp)
+    ) {
+        Icon(
+            painter = painterResource(
+                R.drawable.ic_pnr_copy
+            ),
+            contentDescription =
+                "Copy PNR ending in ${pnr.pnrNumber.takeLast(4)}",
+            tint = pnrControlColor(
+                scheme.onPrimaryContainer,
+                backgrounds
+            ),
+            modifier = Modifier.size(21.dp)
+        )
     }
 }
 
@@ -417,6 +587,7 @@ private fun TrainActionIcon(
     icon: Int,
     description: String,
     enabled: Boolean,
+    backgrounds: List<List<Color>>,
     onClick: () -> Unit,
     loading: Boolean = false,
     destructive: Boolean = false
@@ -426,29 +597,45 @@ private fun TrainActionIcon(
     // Preserve the original circular button background.
     Surface(
         shape = CircleShape,
-        color = scheme.onPrimaryContainer.copy(
-            alpha = 0.10f
-        )
+        color = scheme.onPrimaryContainer.copy(alpha = 0.10f)
     ) {
         IconButton(
             onClick = onClick,
             enabled = enabled,
-            modifier = Modifier.size(43.dp)
+            modifier = Modifier
+                .size(48.dp)
+                .semantics {
+                    contentDescription = description
+
+                    if (!enabled) {
+                        stateDescription = "PNR operation in progress"
+                    }
+                }
         ) {
             if (loading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(19.dp),
                     strokeWidth = 2.dp,
-                    color = scheme.onPrimaryContainer
+                    color = pnrControlColor(
+                        scheme.onPrimaryContainer,
+                        backgrounds
+                    )
                 )
             } else {
                 Icon(
                     painter = painterResource(icon),
-                    contentDescription = description,
-                    tint = if (destructive) {
-                        scheme.error
+                    contentDescription = null,
+                    tint = if (!enabled) {
+                        scheme.onPrimaryContainer.copy(alpha = 0.38f)
                     } else {
-                        scheme.onPrimaryContainer
+                        pnrControlColor(
+                            if (destructive) {
+                                scheme.error
+                            } else {
+                                scheme.onPrimaryContainer
+                            },
+                            backgrounds
+                        )
                     },
                     modifier = Modifier.size(21.dp)
                 )
@@ -458,181 +645,36 @@ private fun TrainActionIcon(
 }
 
 /* =========================================================
-   PASSENGER STATUS LOGIC — UNCHANGED
+   BOOKING RED / CURRENT GREEN
+
+   Retain the existing hues with contrast-corrected text.
 ========================================================= */
 
-private fun statusTokens(
-    value: String
-): List<String> {
-    return Regex("[A-Za-z0-9]+")
-        .findAll(value.uppercase(Locale.ROOT))
-        .map { it.value }
-        .toList()
-}
+@Composable
+private fun statusBadgeColors(
+    current: Boolean
+): PnrBadgeColors {
+    val scheme = MaterialTheme.colorScheme
+    val settings = LocalPnrVisualSettings.current
 
-private fun containsTokenSequence(
-    source: String,
-    candidate: String
-): Boolean {
-    val left = statusTokens(source)
-    val right = statusTokens(candidate)
+    val dark = isDarkAppearance(
+        settings.mode,
+        isSystemInDarkTheme()
+    )
 
-    if (right.isEmpty()) return true
-    if (right.size > left.size) return false
-
-    return left.windowed(right.size).any {
-        it == right
-    }
-}
-
-private val embeddedSeatPattern = Regex(
-    "\\b[A-Z]{1,3}\\d{1,3}\\s+\\d{1,3}\\b"
-)
-
-private fun hasEmbeddedSeat(
-    status: String?
-): Boolean {
-    val raw = availableText(status) ?: return false
-
-    val normalized = raw
-        .uppercase(Locale.ROOT)
-        .replace('/', ' ')
-        .replace('-', ' ')
-        .replace(Regex("\\s+"), " ")
-
-    return embeddedSeatPattern.containsMatchIn(normalized)
-}
-
-private fun isConfirmed(
-    status: String?
-): Boolean {
-    val raw = availableText(status) ?: return false
-
-    return Regex(
-        "^(CNF|CONFIRMED)\\b",
-        RegexOption.IGNORE_CASE
-    ).containsMatchIn(raw)
-}
-
-private fun buildStatusText(
-    status: String?,
-    coach: String?,
-    berthNo: Int?,
-    berthFallback: String?,
-    berthType: String?
-): String? {
-    val raw = availableText(status).orEmpty()
-    val coachText = availableText(coach)
-
-    val berthText = berthNo
-        ?.takeIf { it > 0 }
-        ?.toString()
-        ?: availableText(berthFallback)
-            ?.takeIf { it != "0" }
-
-    val typeText = availableText(berthType)
-
-    var result = raw
-
-    if (!hasEmbeddedSeat(raw)) {
-        if (
-            coachText != null &&
-            !containsTokenSequence(result, coachText)
-        ) {
-            result = listOf(
-                result,
-                coachText
-            ).filter {
-                it.isNotBlank()
-            }.joinToString(" ")
-        }
-
-        if (
-            berthText != null &&
-            coachText != null &&
-            !containsTokenSequence(
-                result,
-                "$coachText $berthText"
-            )
-        ) {
-            result = listOf(
-                result,
-                berthText
-            ).filter {
-                it.isNotBlank()
-            }.joinToString(" ")
-        }
-    }
-
-    if (
-        typeText != null &&
-        !containsTokenSequence(result, typeText)
+    return remember(
+        scheme.surfaceContainerLow,
+        dark,
+        current
     ) {
-        result = listOf(
-            result,
-            typeText
-        ).filter {
-            it.isNotBlank()
-        }.joinToString(" ")
-    }
-
-    return result
-        .trim()
-        .replace(Regex("\\s+"), " ")
-        .takeIf { it.isNotBlank() }
-}
-
-private fun hasConfirmedAllocation(
-    passenger: PassengerStatus
-): Boolean {
-    if (!isConfirmed(passenger.currentStatus)) {
-        return false
-    }
-
-    if (hasEmbeddedSeat(passenger.currentStatus)) {
-        return true
-    }
-
-    val coach = availableText(passenger.coach)
-
-    val berth = passenger.currentBerthNo
-        ?.takeIf { it > 0 }
-        ?: availableText(passenger.berth)
-            ?.toIntOrNull()
-            ?.takeIf { it > 0 }
-
-    return coach != null && berth != null
-}
-
-/* =========================================================
-   BOOKING RED / CURRENT GREEN — UNCHANGED
-========================================================= */
-
-@Composable
-private fun bookingStatusColor(): Color {
-    val lightBackground =
-        MaterialTheme.colorScheme.background.luminance() >
-                0.5f
-
-    return if (lightBackground) {
-        Color(0xFFB42318)
-    } else {
-        Color(0xFFFFA9A9)
+        passengerBadgeColors(
+            surface = scheme.surfaceContainerLow.toArgb(),
+            dark = dark,
+            current = current
+        )
     }
 }
 
-@Composable
-private fun currentStatusColor(): Color {
-    val lightBackground =
-        MaterialTheme.colorScheme.background.luminance() >
-                0.5f
-
-    return if (lightBackground) {
-        Color(0xFF15803D)
-    } else {
-        Color(0xFF86EFAC)
-    }
-}
 @Composable
 private fun PassengerListCard(
     passengers: List<PassengerStatus>
@@ -640,9 +682,16 @@ private fun PassengerListCard(
     val scheme = MaterialTheme.colorScheme
 
     val showBookingLegend = passengers.any {
-        !hasConfirmedAllocation(it) &&
-                availableText(it.bookingStatus) != null
+        passengerStatusPresentation(it).booking != null
     }
+
+    val bookingColor = Color(
+        statusBadgeColors(current = false).foreground
+    )
+
+    val currentColor = Color(
+        statusBadgeColors(current = true).foreground
+    )
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -656,68 +705,119 @@ private fun PassengerListCard(
             scheme.outlineVariant
         )
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement =
-                Arrangement.spacedBy(13.dp)
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement =
-                    Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Passengers",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = scheme.onSurface
-                )
+            val stacked =
+                maxWidth < 250.dp ||
+                        LocalDensity.current.fontScale >= 1.3f
 
-                Text(
-                    text = "${passengers.size} total",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = scheme.onSurfaceVariant
-                )
-            }
-
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement =
-                    Arrangement.spacedBy(
-                        12.dp,
-                        Alignment.End
-                    ),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(13.dp)
             ) {
-                if (showBookingLegend) {
-                    StatusLegend(
-                        color = bookingStatusColor(),
-                        label = "Booking"
-                    )
+                if (stacked) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        PassengerHeading()
+                        PassengerCount(passengers.size)
+                    }
+
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (showBookingLegend) {
+                            StatusLegend(
+                                color = bookingColor,
+                                label = "Booking"
+                            )
+                        }
+
+                        StatusLegend(
+                            color = currentColor,
+                            label = "Current"
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PassengerHeading()
+                        PassengerCount(passengers.size)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            12.dp,
+                            Alignment.End
+                        ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (showBookingLegend) {
+                            StatusLegend(
+                                color = bookingColor,
+                                label = "Booking"
+                            )
+                        }
+
+                        StatusLegend(
+                            color = currentColor,
+                            label = "Current"
+                        )
+                    }
                 }
 
-                StatusLegend(
-                    color = currentStatusColor(),
-                    label = "Current"
+                HorizontalDivider(
+                    color = scheme.outlineVariant
                 )
-            }
 
-            HorizontalDivider(
-                color = scheme.outlineVariant
-            )
-
-            passengers.forEachIndexed { index, passenger ->
-                PassengerRow(passenger)
-
-                if (index != passengers.lastIndex) {
-                    HorizontalDivider(
-                        color = scheme.outlineVariant
+                passengers.forEachIndexed { index, passenger ->
+                    PassengerRow(
+                        passenger = passenger,
+                        stacked = stacked
                     )
+
+                    if (index != passengers.lastIndex) {
+                        HorizontalDivider(
+                            color = scheme.outlineVariant
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun PassengerHeading() {
+    Text(
+        text = "Passengers",
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@Composable
+private fun PassengerCount(
+    count: Int
+) {
+    Text(
+        text = "$count total",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+/** Select the full Compose text-layout path for fixed-color text. */
+private val detailsTextLayoutCallback: (TextLayoutResult) -> Unit = {
+    // No text or layout data is retained.
 }
 
 @Composable
@@ -726,8 +826,7 @@ private fun StatusLegend(
     label: String
 ) {
     Row(
-        horizontalArrangement =
-            Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
@@ -739,93 +838,82 @@ private fun StatusLegend(
         SolidText(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            onTextLayout = detailsTextLayoutCallback
         )
     }
 }
 
 @Composable
 private fun PassengerRow(
-    passenger: PassengerStatus
+    passenger: PassengerStatus,
+    stacked: Boolean
 ) {
     val scheme = MaterialTheme.colorScheme
 
-    val booking = if (
-        hasConfirmedAllocation(passenger)
-    ) {
-        null
-    } else {
-        buildStatusText(
-            status = passenger.bookingStatus,
-            coach = passenger.bookingCoach,
-            berthNo = passenger.bookingBerthNo,
-            berthFallback = null,
-            berthType = passenger.bookingBerthCode
-        )
-    }
+    val (booking, current) =
+        passengerStatusPresentation(passenger)
 
-    val current = buildStatusText(
-        status = passenger.currentStatus,
-        coach = passenger.coach,
-        berthNo = passenger.currentBerthNo,
-        berthFallback = passenger.berth,
-        berthType = passenger.currentBerthCode
-    )
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
-    ) {
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = scheme.secondaryContainer,
-            contentColor = scheme.onSecondaryContainer
+    if (stacked) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(
-                modifier = Modifier.size(
-                    width = 39.dp,
-                    height = 35.dp
-                ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "P${passenger.index}",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = scheme.onSecondaryContainer
-                )
-            }
-        }
+            PassengerIdentifier(passenger.index)
 
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(
-                5.dp,
-                Alignment.End
-            ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
             if (booking != null) {
+                PassengerRoleLabel(
+                    current = false
+                )
+
                 PassengerBadge(
                     text = booking,
-                    current = false,
-                    modifier = if (current != null) {
-                        Modifier.weight(1f, fill = false)
-                    } else {
-                        Modifier
-                    }
+                    current = false
                 )
             }
 
-            if (booking != null && current != null) {
-                SolidText(
-                    text = "/",
-                    color = scheme.onSurfaceVariant
-                )
-            }
+            PassengerRoleLabel(
+                current = true
+            )
 
-            if (current != null) {
+            PassengerBadge(
+                text = current,
+                current = true
+            )
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            PassengerIdentifier(passenger.index)
+
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(
+                    5.dp,
+                    Alignment.End
+                ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (booking != null) {
+                    PassengerBadge(
+                        text = booking,
+                        current = false,
+                        modifier = Modifier.weight(
+                            1f,
+                            fill = false
+                        )
+                    )
+
+                    SolidText(
+                        text = "/",
+                        modifier = Modifier.clearAndSetSemantics {},
+                        color = scheme.onSurfaceVariant
+                    )
+                }
+
                 PassengerBadge(
                     text = current,
                     current = true,
@@ -841,38 +929,99 @@ private fun PassengerRow(
 }
 
 @Composable
+private fun PassengerIdentifier(
+    index: Int
+) {
+    val scheme = MaterialTheme.colorScheme
+
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = scheme.secondaryContainer,
+        contentColor = scheme.onSecondaryContainer
+    ) {
+        Box(
+            modifier = Modifier
+                .sizeIn(
+                    minWidth = 39.dp,
+                    minHeight = 35.dp
+                )
+                .padding(
+                    horizontal = 6.dp,
+                    vertical = 5.dp
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "P$index",
+                modifier = Modifier.semantics {
+                    contentDescription = "Passenger $index"
+                },
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = scheme.onSecondaryContainer
+            )
+        }
+    }
+}
+
+@Composable
+private fun PassengerRoleLabel(
+    current: Boolean
+) {
+    Text(
+        text = if (current) {
+            "Current status"
+        } else {
+            "Booking status"
+        },
+        // The associated badge already announces its role and full value.
+        modifier = Modifier.clearAndSetSemantics {},
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+@Composable
 private fun PassengerBadge(
     text: String,
     current: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val statusColor = if (current) {
-        currentStatusColor()
-    } else {
-        bookingStatusColor()
-    }
+    val colors = statusBadgeColors(current)
+    val foreground = Color(colors.foreground)
+    val background = Color(colors.background)
 
     Surface(
         modifier = modifier,
-        color = statusColor.copy(alpha = 0.12f),
+        color = background,
+        contentColor = foreground,
         shape = RoundedCornerShape(10.dp),
         border = BorderStroke(
             1.dp,
-            statusColor.copy(alpha = 0.30f)
+            foreground.copy(alpha = 0.30f)
         )
     ) {
         SolidText(
             text = text,
-            modifier = Modifier.padding(
-                horizontal = 9.dp,
-                vertical = 7.dp
-            ),
+            modifier = Modifier
+                .semantics {
+                    contentDescription = if (current) {
+                        "Current status: $text"
+                    } else {
+                        "Booking status: $text"
+                    }
+                }
+                .padding(
+                    horizontal = 9.dp,
+                    vertical = 7.dp
+                ),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = statusColor,
+            color = foreground,
             textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+            softWrap = true,
+            maxLines = Int.MAX_VALUE,
+            onTextLayout = detailsTextLayoutCallback
         )
     }
 }
@@ -895,9 +1044,7 @@ private fun JourneyInformationCard(
         "Reservation up to" to details.reservationUpto,
         "Source name" to details.sourceStationName,
         "Destination name" to details.destinationStationName,
-        "Distance" to details.distanceKm?.let {
-            "${formatNumber(it)} km"
-        },
+        "Distance" to formatDistanceKm(details.distanceKm),
         "Chart status" to pnr.chartStatus
     ).filter {
         availableText(it.second) != null
@@ -919,8 +1066,7 @@ private fun JourneyInformationCard(
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement =
-                Arrangement.spacedBy(13.dp)
+            verticalArrangement = Arrangement.spacedBy(13.dp)
         ) {
             InformationHeader(
                 icon = R.drawable.ic_pnr_route,
@@ -951,7 +1097,7 @@ private fun JourneyInformationCard(
 }
 
 /* =========================================================
-   TICKET CARD — RESTORED ORIGINAL DESIGN
+   TICKET CARD — ORIGINAL DESIGN WITH RESPONSIVE FARE
 ========================================================= */
 
 @Composable
@@ -961,17 +1107,11 @@ private fun TicketInformationCard(
     val scheme = MaterialTheme.colorScheme
     val details = pnr.details
 
-    val fare = details.bookingFare
-        ?: details.ticketFare
+    val fare = farePresentation(details)
 
     val fields = listOf(
-        "Ticket fare" to details.ticketFare
-            ?.takeIf { it != fare }
-            ?.let(::formatFare),
-
-        "Booking date" to
-                formatArrivalDate(details.bookingDate),
-
+        "Ticket fare" to fare?.secondaryTicketAmount,
+        "Booking date" to formatArrivalDate(details.bookingDate),
         "VIKALP" to details.vikalpStatus,
         "Ticket type" to details.ticketType
     ).filter {
@@ -994,8 +1134,7 @@ private fun TicketInformationCard(
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement =
-                Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -1006,15 +1145,20 @@ private fun TicketInformationCard(
                     contentColor = scheme.onPrimaryContainer
                 ) {
                     Box(
-                        modifier = Modifier.size(49.dp),
+                        modifier = Modifier
+                            .sizeIn(
+                                minWidth = 49.dp,
+                                minHeight = 49.dp
+                            )
+                            .padding(8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         SolidText(
                             text = "₹",
-                            style =
-                                MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = scheme.onPrimaryContainer
+                            color = scheme.onPrimaryContainer,
+                            onTextLayout = detailsTextLayoutCallback
                         )
                     }
                 }
@@ -1022,13 +1166,12 @@ private fun TicketInformationCard(
                 Spacer(Modifier.width(12.dp))
 
                 Column(
-                    verticalArrangement =
-                        Arrangement.spacedBy(3.dp)
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
                         text = "Ticket information",
-                        style =
-                            MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = scheme.onSurface
                     )
@@ -1042,40 +1185,10 @@ private fun TicketInformationCard(
             }
 
             if (fare != null) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = scheme.surfaceContainerLow,
-                    contentColor = scheme.onSurface,
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement =
-                            Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (
-                                details.bookingFare != null
-                            ) {
-                                "Booking fare"
-                            } else {
-                                "Ticket fare"
-                            },
-                            color = scheme.onSurfaceVariant
-                        )
-
-                        Text(
-                            text = formatFare(fare),
-                            style =
-                                MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = scheme.primary
-                        )
-                    }
-                }
+                PrimaryFare(
+                    label = fare.primaryLabel,
+                    amount = fare.primaryAmount
+                )
             }
 
             if (fields.isNotEmpty()) {
@@ -1085,6 +1198,76 @@ private fun TicketInformationCard(
                     DetailRow(
                         label = field.first,
                         value = field.second
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrimaryFare(
+    label: String,
+    amount: String
+) {
+    val scheme = MaterialTheme.colorScheme
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = scheme.surfaceContainerLow,
+        contentColor = scheme.onSurface,
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            val stacked =
+                maxWidth < 240.dp ||
+                        LocalDensity.current.fontScale >= 1.3f
+
+            if (stacked) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = label,
+                        color = scheme.onSurfaceVariant
+                    )
+
+                    Text(
+                        text = amount,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = scheme.primary
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = label,
+                        modifier = Modifier.weight(1f),
+                        color = scheme.onSurfaceVariant
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Text(
+                        text = amount,
+                        modifier = Modifier.weight(
+                            1.5f,
+                            fill = false
+                        ),
+                        textAlign = TextAlign.End,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = scheme.primary
                     )
                 }
             }
@@ -1116,9 +1299,7 @@ private fun LastUpdateCard(
         ) {
             Surface(
                 shape = RoundedCornerShape(13.dp),
-                color = scheme.onTertiaryContainer.copy(
-                    alpha = 0.09f
-                )
+                color = scheme.onTertiaryContainer.copy(alpha = 0.09f)
             ) {
                 Box(
                     modifier = Modifier.size(49.dp),
@@ -1138,8 +1319,8 @@ private fun LastUpdateCard(
             Spacer(Modifier.width(13.dp))
 
             Column(
-                verticalArrangement =
-                    Arrangement.spacedBy(4.dp)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = "Last update",
@@ -1205,8 +1386,8 @@ private fun InformationHeader(
         Spacer(Modifier.width(12.dp))
 
         Column(
-            verticalArrangement =
-                Arrangement.spacedBy(3.dp)
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Text(
                 text = title,
@@ -1232,41 +1413,57 @@ private fun DetailRow(
     val valid = availableText(value) ?: return
     val scheme = MaterialTheme.colorScheme
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            text = label,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-            color = scheme.onSurfaceVariant
-        )
+        val stacked =
+            maxWidth < 220.dp ||
+                    LocalDensity.current.fontScale >= 1.3f
 
-        Spacer(Modifier.width(10.dp))
+        if (stacked) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant
+                )
 
-        Text(
-            text = valid,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.End,
-            color = scheme.onSurface
-        )
+                Text(
+                    text = valid,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = scheme.onSurface
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = label,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant
+                )
+
+                Spacer(Modifier.width(10.dp))
+
+                Text(
+                    text = valid,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.End,
+                    color = scheme.onSurface
+                )
+            }
+        }
     }
 }
-
-private fun formatNumber(
-    value: Double
-): String = if (value % 1.0 == 0.0) {
-    String.format(Locale.US, "%,.0f", value)
-} else {
-    String.format(Locale.US, "%,.1f", value)
-}
-
-private fun formatFare(
-    value: Double
-): String = "₹${formatNumber(value)}"
 
 @Preview(showBackground = true)
 @Composable
@@ -1275,8 +1472,6 @@ private fun DetailsPreview() {
         DetailsScreen(
             pnr = MockPnrData.sample().last(),
             isRefreshing = false,
-            message = null,
-            onMessageShown = {},
             onRefresh = {},
             onDelete = {},
             onBack = {}

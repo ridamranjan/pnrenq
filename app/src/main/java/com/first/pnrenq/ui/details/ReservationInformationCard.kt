@@ -1,4 +1,3 @@
-
 package com.first.pnrenq.ui.details
 
 import androidx.compose.foundation.BorderStroke
@@ -22,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -30,9 +31,8 @@ import androidx.compose.ui.unit.sp
 
 import com.first.pnrenq.R
 import com.first.pnrenq.domain.model.PnrInfo
+import com.first.pnrenq.domain.model.currentReservationCodes
 import com.first.pnrenq.ui.theme.ThemeText as Text
-
-import java.util.Locale
 
 /* =========================================================
    STATUS INFORMATION MODEL
@@ -41,7 +41,7 @@ import java.util.Locale
    palette and background style.
 ========================================================= */
 
-private data class StatusMeaning(
+internal data class StatusMeaning(
     val code: String,
     val title: String,
     val explanation: String,
@@ -58,15 +58,14 @@ private data class StatusMeaning(
    Each status has a consistent, fixed color scheme.
 ========================================================= */
 
-private val reservationGlossary = listOf(
+internal val reservationGlossary = listOf(
 
     StatusMeaning(
         code = "CNF",
         title = "Confirmed",
         explanation =
-            "Your reservation is confirmed. Coach and " +
-                    "berth details may be assigned or finalized " +
-                    "when the reservation chart is prepared.",
+            "The reported status is confirmed. Coach and berth details " +
+                    "may be finalized at chart preparation. Check the latest status.",
         badgeBackground = Color(0xFFDCFCE7),
         badgeForeground = Color(0xFF166534)
     ),
@@ -75,10 +74,9 @@ private val reservationGlossary = listOf(
         code = "RAC",
         title = "Reservation Against Cancellation",
         explanation =
-            "You can travel with RAC accommodation, " +
-                    "usually a shared seat initially. A full " +
-                    "berth may become available if another " +
-                    "reservation is cancelled.",
+            "RAC generally permits reserved sitting accommodation initially. " +
+                    "A full berth may become available, but is not guaranteed. " +
+                    "Check the latest railway status.",
         badgeBackground = Color(0xFFFEF3C7),
         badgeForeground = Color(0xFF92400E)
     ),
@@ -176,11 +174,10 @@ private val reservationGlossary = listOf(
 
     StatusMeaning(
         code = "RLGN",
-        title = "Roadside Waiting List",
+        title = "Waiting List (RLGN)",
         explanation =
-            "A roadside waiting-list designation " +
-                    "used in some reservation records. " +
-                    "The position is subject to availability.",
+            "A waiting-list designation in some reservation records. " +
+                    "Check the latest railway status for the applicable allocation.",
         badgeBackground = Color(0xFFD1FAE5),
         badgeForeground = Color(0xFF065F46)
     ),
@@ -275,9 +272,8 @@ private val reservationGlossary = listOf(
         code = "TDR",
         title = "Ticket Deposit Receipt",
         explanation =
-            "A TDR claim has been filed. This " +
-                    "represents a ticket or refund-related " +
-                    "status, not a berth confirmation.",
+            "A ticket-related claim was reported. This is not a berth " +
+                    "confirmation or a guarantee of refund.",
         badgeBackground = Color(0xFFF3E8FF),
         badgeForeground = Color(0xFF6B21A8)
     ),
@@ -286,131 +282,47 @@ private val reservationGlossary = listOf(
         code = "NOSB",
         title = "No Seat or Berth",
         explanation =
-            "No separate seat or berth is allotted " +
-                    "under this reservation entry. Check " +
-                    "the passenger's booking details.",
+            "This code does not establish a separate seat or berth. " +
+                    "Check the passenger's latest railway record.",
         badgeBackground = Color(0xFFCFFAFE),
         badgeForeground = Color(0xFF155E75)
+    ),
+
+    StatusMeaning(
+        code = "MIXED",
+        title = "Mixed statuses",
+        explanation =
+            "The aggregate status does not describe one common passenger outcome. " +
+                    "Check each passenger's current status.",
+        badgeBackground = Color(0xFFF1F5F9),
+        badgeForeground = Color(0xFF334155)
+    ),
+
+    StatusMeaning(
+        code = "UNKNOWN",
+        title = "Current status unclear",
+        explanation =
+            "Current information is missing, unfamiliar or contradictory. " +
+                    "Do not infer confirmation from an older booking status. " +
+                    "Check the latest railway record.",
+        badgeBackground = Color(0xFFF1F5F9),
+        badgeForeground = Color(0xFF334155)
     )
 
 ).associateBy { it.code }
 
 /* =========================================================
-   STATUS NORMALIZATION
-
-   Examples:
-   RAC 7           -> RAC
-   RAC/3           -> RAC
-   CNF/B1/25       -> CNF
-   WL 12           -> WL
-   GNWL/15         -> GNWL
-   RLWL/10         -> RLWL
-   TQWL/4          -> TQWL
-   REGRET/WL       -> REGRET
-
-   If combined text contains a booking status
-   followed by a current status, the last
-   recognized code is preferred.
-========================================================= */
-
-private val statusWordPattern = Regex("[A-Z]+")
-
-private val racSeatPattern = Regex(
-    "^R\\d+\\s+\\d+\\b"
-)
-
-private val statusAliases = mapOf(
-    "CONFIRMED" to "CNF",
-    "CONFIRM" to "CNF",
-    "WAITLIST" to "WL",
-    "WAITLISTED" to "WL",
-    "WAITING" to "WL",
-    "CANCELLED" to "CAN",
-    "CANCELED" to "CAN",
-    "MODIFIED" to "MOD",
-    "RELEASED" to "REL"
-)
-
-private fun identifyReservationStatus(
-    rawStatus: String?
-): StatusMeaning? {
-    if (rawStatus.isNullOrBlank()) {
-        return null
-    }
-
-    val normalized = rawStatus
-        .trim()
-        .uppercase(Locale.ROOT)
-
-    if (
-        normalized in setOf(
-            "NA",
-            "N/A",
-            "NONE",
-            "UNKNOWN",
-            "-",
-            "--"
-        )
-    ) {
-        return null
-    }
-
-    // Special combinations must not be mistaken for WL.
-    if (normalized.startsWith("REGRET")) {
-        return reservationGlossary["REGRET"]
-    }
-
-    // Indian Railways also uses R# # for an
-    // allocated RAC coach and berth reference.
-    if (racSeatPattern.containsMatchIn(normalized)) {
-        return reservationGlossary["RAC"]
-    }
-
-    val recognized = statusWordPattern
-        .findAll(normalized)
-        .map { it.value }
-        .map { word ->
-            statusAliases[word] ?: word
-        }
-        .mapNotNull { code ->
-            reservationGlossary[code]
-        }
-        .toList()
-
-    return recognized.lastOrNull()
-}
-
-/* =========================================================
    EXTRACT UNIQUE CURRENT STATUSES
 
-   - Current status is preferred.
-   - Booking status is used only if current is absent.
-   - Duplicate statuses are removed.
-   - Passenger order is retained.
-   - General PNR status is a fallback.
+   Use the shared interpretation, never substitute booking status.
 ========================================================= */
 
 private fun meaningsForPnr(
     pnr: PnrInfo
-): List<StatusMeaning> {
-    val passengerMeanings = pnr.passengers
-        .mapNotNull { passenger ->
-            identifyReservationStatus(
-                passenger.currentStatus
-            ) ?: identifyReservationStatus(
-                passenger.bookingStatus
-            )
-        }
-        .distinctBy { it.code }
-
-    if (passengerMeanings.isNotEmpty()) {
-        return passengerMeanings
+): List<StatusMeaning> =
+    currentReservationCodes(pnr).map { code ->
+        reservationGlossary.getValue(code.name)
     }
-
-    return listOfNotNull(
-        identifyReservationStatus(pnr.currentStatus)
-    )
-}
 
 /* =========================================================
    RESERVATION INFORMATION CARD
@@ -429,14 +341,11 @@ fun ReservationInformationCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-
         shape = RoundedCornerShape(24.dp),
-
         colors = CardDefaults.cardColors(
             containerColor = scheme.surfaceContainerLow,
             contentColor = scheme.onSurface
         ),
-
         border = BorderStroke(
             1.dp,
             scheme.outlineVariant
@@ -444,41 +353,30 @@ fun ReservationInformationCard(
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-
-            verticalArrangement =
-                Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
 
             /* ---------- Card heading ---------- */
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-
-                horizontalArrangement =
-                    Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Surface(
                     color = scheme.secondaryContainer,
-                    contentColor =
-                        scheme.onSecondaryContainer,
-
+                    contentColor = scheme.onSecondaryContainer,
                     shape = RoundedCornerShape(13.dp)
                 ) {
                     Box(
                         modifier = Modifier.size(48.dp),
-
-                        contentAlignment =
-                            Alignment.Center
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             painter = painterResource(
                                 R.drawable.ic_pnr_seat
                             ),
-
                             contentDescription = null,
-
                             tint = scheme.onSecondaryContainer,
-
                             modifier = Modifier.size(25.dp)
                         )
                     }
@@ -486,27 +384,18 @@ fun ReservationInformationCard(
 
                 Column(
                     modifier = Modifier.weight(1f),
-
-                    verticalArrangement =
-                        Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = "Reservation Information",
-
-                        style =
-                            MaterialTheme.typography.titleMedium,
-
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-
                         color = scheme.onSurface
                     )
 
                     Text(
                         text = "What the current statuses mean",
-
-                        style =
-                            MaterialTheme.typography.bodySmall,
-
+                        style = MaterialTheme.typography.bodySmall,
                         color = scheme.onSurfaceVariant
                     )
                 }
@@ -519,25 +408,17 @@ fun ReservationInformationCard(
             /* ---------- Dynamic status glossary ---------- */
 
             if (meanings.isEmpty()) {
-
                 Text(
                     text = "Current reservation status " +
                             "information is unavailable.",
-
-                    style =
-                        MaterialTheme.typography.bodyMedium,
-
+                    style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant
                 )
-
             } else {
-
                 meanings.forEachIndexed { index, meaning ->
-
                     ReservationStatusRow(meaning)
 
                     if (index < meanings.lastIndex) {
-
                         HorizontalDivider(
                             color = scheme.outlineVariant.copy(
                                 alpha = 0.65f
@@ -553,116 +434,127 @@ fun ReservationInformationCard(
 /* =========================================================
    ALIGNED STATUS / DESCRIPTION ROW
 
-   IMPORTANT:
-   The left column has a fixed width (96dp).
-
-   All descriptions therefore begin at exactly
-   the same horizontal position, including long
-   waitlist codes and quota-specific statuses.
-
-   Description text is theme-aware.
-   Status badge is theme-independent.
+   The ordinary layout keeps the aligned 96dp badge column.
+   Narrow or enlarged text uses a stacked layout instead.
 ========================================================= */
 
 @Composable
 private fun ReservationStatusRow(
     meaning: StatusMeaning
 ) {
-    val scheme = MaterialTheme.colorScheme
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-
-        verticalAlignment = Alignment.Top,
-
-        horizontalArrangement =
-            Arrangement.spacedBy(12.dp)
+    BoxWithConstraints(
+        Modifier.fillMaxWidth()
     ) {
+        val stacked =
+            maxWidth < 220.dp ||
+                    LocalDensity.current.fontScale >= 1.3f
 
-        /* ---------- Fixed-width status column ---------- */
-
-        Box(
-            modifier = Modifier.width(96.dp)
-        ) {
-
-            val badgeShape =
-                RoundedCornerShape(10.dp)
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 37.dp)
-                    .clip(badgeShape)
-                    .background(meaning.badgeBackground)
-                    .border(
-                        width = 1.dp,
-                        color = meaning.badgeForeground.copy(
-                            alpha = 0.25f
-                        ),
-                        shape = badgeShape
-                    )
-                    .padding(
-                        horizontal = 6.dp,
-                        vertical = 10.dp
-                    ),
-
-                contentAlignment = Alignment.Center
+        if (stacked) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                ReservationCodeBadge(
+                    meaning,
+                    Modifier.widthIn(min = 96.dp)
+                )
 
-                // Solid text deliberately bypasses ThemeText.
-                SolidText(
-                    text = meaning.code,
+                ReservationMeaningText(meaning)
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ReservationCodeBadge(
+                    meaning,
+                    Modifier.width(96.dp)
+                )
 
-                    color = meaning.badgeForeground,
-
-                    style =
-                        MaterialTheme.typography.labelMedium,
-
-                    fontWeight = FontWeight.Bold,
-
-                    fontSize = if (
-                        meaning.code.length > 6
-                    ) {
-                        10.sp
-                    } else {
-                        12.sp
-                    },
-
-                    textAlign = TextAlign.Center,
-
-                    maxLines = 1
+                ReservationMeaningText(
+                    meaning,
+                    Modifier.weight(1f)
                 )
             }
         }
+    }
+}
 
-        /* ---------- Flexible information column ---------- */
+/**
+ * Select the full text-layout implementation for fixed-color glossary badges.
+ *
+ * Unlike the optimized String-only path, this supplies the measured text
+ * layout through accessibility semantics without needing to reconstruct it.
+ *
+ * No text or layout data is retained by this callback.
+ */
+private val glossaryTextLayoutCallback: (TextLayoutResult) -> Unit = {
+    // No additional processing required.
+}
 
-        Column(
-            modifier = Modifier.weight(1f),
+@Composable
+private fun ReservationCodeBadge(
+    meaning: StatusMeaning,
+    modifier: Modifier = Modifier
+) {
+    val badgeShape = RoundedCornerShape(10.dp)
 
-            verticalArrangement =
-                Arrangement.spacedBy(5.dp)
-        ) {
-
-            Text(
-                text = meaning.title,
-
-                style =
-                    MaterialTheme.typography.titleSmall,
-
-                fontWeight = FontWeight.SemiBold,
-
-                color = scheme.onSurface
+    Box(
+        modifier = modifier
+            .heightIn(min = 37.dp)
+            .clip(badgeShape)
+            .background(meaning.badgeBackground)
+            .border(
+                1.dp,
+                meaning.badgeForeground.copy(alpha = 0.25f),
+                badgeShape
             )
+            .padding(
+                horizontal = 6.dp,
+                vertical = 10.dp
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        // Fixed, independently contrast-checked colors; no gradient text here.
+        SolidText(
+            text = meaning.code,
+            color = meaning.badgeForeground,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            fontSize = if (meaning.code.length > 6) {
+                10.sp
+            } else {
+                12.sp
+            },
+            textAlign = TextAlign.Center,
 
-            Text(
-                text = meaning.explanation,
+            // Use the full layout path without altering the displayed code.
+            onTextLayout = glossaryTextLayoutCallback
+        )
+    }
+}
 
-                style =
-                    MaterialTheme.typography.bodySmall,
+@Composable
+private fun ReservationMeaningText(
+    meaning: StatusMeaning,
+    modifier: Modifier = Modifier
+) {
+    val scheme = MaterialTheme.colorScheme
 
-                color = scheme.onSurfaceVariant
-            )
-        }
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Text(
+            text = meaning.title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = scheme.onSurface
+        )
+
+        Text(
+            text = meaning.explanation,
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurfaceVariant
+        )
     }
 }

@@ -1,4 +1,3 @@
-
 package com.first.pnrenq.ui.state
 
 import org.junit.Assert.assertEquals
@@ -24,8 +23,10 @@ class PnrNavigationEventTest {
 
     @Test
     fun differentEventTypesAreNotEqual() {
-        val open = PnrNavigationEvent.OpenDetails("1234567890")
-        val delete = PnrNavigationEvent.ReturnAfterDelete("1234567890")
+        val open: PnrNavigationEvent =
+            PnrNavigationEvent.OpenDetails("1234567890")
+        val delete: PnrNavigationEvent =
+            PnrNavigationEvent.ReturnAfterDelete("1234567890")
 
         assertFalse(open == delete)
     }
@@ -36,5 +37,25 @@ class PnrNavigationEventTest {
         val second = PnrNavigationEvent.OpenDetails("1234567890")
 
         assertTrue(first == second)
+    }
+
+    @Test
+    fun identicalDeleteNavigationEventsAreEqual() {
+        val first = PnrNavigationEvent.ReturnAfterDelete("1234567890")
+        val second = PnrNavigationEvent.ReturnAfterDelete("1234567890")
+
+        assertEquals(first, second)
+    }
+
+    @Test
+    fun navigationEventsWithDifferentPnrsAreNotEqual() {
+        assertFalse(
+            PnrNavigationEvent.OpenDetails("1234567890") ==
+                    PnrNavigationEvent.OpenDetails("9876543210")
+        )
+        assertFalse(
+            PnrNavigationEvent.ReturnAfterDelete("1234567890") ==
+                    PnrNavigationEvent.ReturnAfterDelete("9876543210")
+        )
     }
 }

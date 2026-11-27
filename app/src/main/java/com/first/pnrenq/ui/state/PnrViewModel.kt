@@ -1,90 +1,97 @@
-
 package com.first.pnrenq.ui.state
 
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import android.app.Application
+import androidx.annotation.MainThread
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.first.pnrenq.data.local.LocalPnrRepository
 import com.first.pnrenq.data.local.PnrDatabaseProvider
-import com.first.pnrenq.data.remote.RemotePnrChecker
 import com.first.pnrenq.data.remote.PnrCheckException
+import com.first.pnrenq.data.remote.RemotePnrChecker
+import com.first.pnrenq.domain.model.PnrInfo
 import com.first.pnrenq.domain.operation.PnrOperationCoordinator
 import com.first.pnrenq.domain.validation.isValidPnr
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-class PnrViewModel(application: Application) :
-    AndroidViewModel(application) {
+class PnrViewModel internal constructor(
+    application: Application,
+    private val repository: PnrViewModelDataSource,
+    private val lookup: suspend (String) -> PnrInfo
+) : AndroidViewModel(application) {
 
-    private val repository = LocalPnrRepository(
-        PnrDatabaseProvider.get(application).pnrDao()
+    // Preserve the constructor used by the default AndroidViewModel factory.
+    constructor(application: Application) : this(
+        application,
+        LocalPnrViewModelDataSource(
+            LocalPnrRepository(
+                PnrDatabaseProvider.get(application).pnrDao()
+            )
+        ),
+        RemotePnrChecker::check
     )
 
     private val coordinator = PnrOperationCoordinator()
-
+    private val navigationQueue = PnrNavigationQueue()
     private val _state = MutableStateFlow(PnrUiState())
     val state: StateFlow<PnrUiState> = _state.asStateFlow()
-
-    private val _navigationEvents =
-        MutableSharedFlow<PnrNavigationEvent>()
-
-    val navigationEvents = _navigationEvents.asSharedFlow()
+    val navigationEvents: Flow<PnrNavigationEvent> = navigationQueue.events
 
     private var loadJob: Job? = null
     private var loadGeneration = 0L
+    private var nextMessageId = 0L
 
     init {
         loadSavedPnrs()
     }
 
+    // UI actions and all state mutations are confined to the main thread.
+    private fun updateState(transform: (PnrUiState) -> PnrUiState) {
+        _state.value = transform(_state.value)
+    }
 
+    @MainThread
     fun loadSavedPnrs() {
-        loadJob?.cancel()
-
         loadGeneration += 1
         val generation = loadGeneration
+        loadJob?.cancel()
 
-        _state.update {
-            it.copy(
-                isLoading = it.pnrs.isEmpty(),
-                loadError = null
-            )
+        updateState {
+            // Retain the previous warning until a successful read replaces it.
+            it.copy(isLoading = true)
         }
 
         loadJob = viewModelScope.launch {
             try {
-                repository.observeAll().collect { records ->
+                repository.observeAll().collect { result ->
                     if (generation == loadGeneration) {
-                        _state.update {
+                        updateState {
                             it.copy(
-                                pnrs = records,
+                                pnrs = result.pnrs,
                                 isLoading = false,
-                                loadError = null
+                                loadError = unreadableMessage(result.unreadablePnrs),
+                                unreadablePnrs = result.unreadablePnrs
                             )
                         }
                     }
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 if (generation == loadGeneration) {
-                    _state.update {
+                    updateState {
                         it.copy(
                             isLoading = false,
-                            loadError =
-                                "Unable to load saved PNRs. Please retry."
+                            loadError = "Unable to load saved PNRs. Please retry.",
+                            unreadablePnrs = emptyList()
                         )
                     }
                 }
@@ -92,201 +99,237 @@ class PnrViewModel(application: Application) :
         }
     }
 
+    private fun unreadableMessage(pnrs: List<String>): String? {
+        if (pnrs.isEmpty()) return null
 
-    fun clearAddError() {
-        _state.update { it.copy(addError = null) }
+        val endings = pnrs.take(3).joinToString(", ") {
+            "…${it.takeLast(4)}"
+        }
+        val more = if (pnrs.size > 3) {
+            ", and ${pnrs.size - 3} more"
+        } else {
+            ""
+        }
+
+        return "Unable to read ${pnrs.size} saved PNR(s) ($endings$more). " +
+                "Re-add the affected PNR using Add PNR to repair it."
     }
 
+    @MainThread
+    fun clearAddError() {
+        updateState { it.copy(addError = null) }
+    }
+
+    /** Compatibility for the existing screens; never discard scoped feedback. */
+    @MainThread
     fun clearDetailsMessage() {
-        _state.update {
-            it.copy(
-                detailsMessage = null,
-                messagePnr = null
-            )
+        updateState {
+            it.copy(detailsMessage = null, messagePnr = null)
         }
     }
 
+    /** A late acknowledgement must not clear a newer message for this PNR. */
+    @MainThread
+    fun clearOperationMessage(pnr: String, messageId: Long) {
+        updateState { state ->
+            if (state.operationMessages[pnr]?.id == messageId) {
+                state.withoutOperationMessage(pnr)
+            } else {
+                state
+            }
+        }
+    }
 
-    fun checkPnr(pnr: String) {
+    private fun PnrUiState.withoutOperationMessage(pnr: String): PnrUiState =
+        copy(
+            operationMessages = operationMessages - pnr,
+            detailsMessage = if (messagePnr == pnr) null else detailsMessage,
+            messagePnr = if (messagePnr == pnr) null else messagePnr
+        )
+
+    private fun PnrUiState.withOperationMessage(
+        pnr: String,
+        kind: PnrMessageKind,
+        text: String
+    ): PnrUiState {
+        val message = PnrOperationMessage(++nextMessageId, kind, text)
+
+        return copy(
+            operationMessages = operationMessages + (pnr to message),
+            detailsMessage = text,
+            messagePnr = pnr
+        )
+    }
+
+    @MainThread
+    fun checkPnr(pnr: String, requestId: String? = null) {
+        if (_state.value.isChecking) return
+
         if (!isValidPnr(pnr)) {
-            _state.update {
-                it.copy(
-                    addError = "Enter a valid 10-digit PNR"
-                )
+            updateState {
+                it.copy(addError = "Enter a valid 10-digit PNR")
             }
             return
         }
 
-        if (_state.value.isChecking) return
-        if (!coordinator.tryAcquire(pnr)) return
-
-        _state.update {
-            it.copy(
-                isChecking = true,
-                addError = null
-            )
-        }
-
+        // Acquire inside the coroutine: if the scope is already cancelled,
+        // no operation lock or busy state is created.
         viewModelScope.launch {
+            if (_state.value.isChecking || !coordinator.tryAcquire(pnr)) {
+                return@launch
+            }
+
             var saved = false
 
             try {
-                // Reuse a saved record without making another API call.
-                val existing = repository.getByPnr(pnr)
-
-                if (existing != null) {
-                    saved = true
-                } else {
-                    // Live request through Cloudflare.
-                    val result = RemotePnrChecker.check(pnr)
-
-                    // Save only a successfully validated result.
-                    repository.save(result)
-                    saved = true
-                }
-
-            } catch (e: CancellationException) {
-                throw e
-
-            } catch (e: PnrCheckException) {
-                _state.update {
-                    it.copy(addError = e.message)
-                }
-
-            } catch (e: Exception) {
-                _state.update {
+                updateState {
                     it.copy(
-                        addError =
-                            "Unable to save PNR. Please try again."
+                        isChecking = true,
+                        checkingPnr = pnr,
+                        addError = null
                     )
                 }
 
+                val existing = repository.getByPnr(pnr)
+
+                if (existing == null) {
+                    val result = lookup(pnr)
+                    currentCoroutineContext().ensureActive()
+                    repository.save(result)
+                }
+
+                saved = true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: PnrCheckException) {
+                updateState { it.copy(addError = e.message) }
+            } catch (_: Exception) {
+                updateState {
+                    it.copy(
+                        addError = "Unable to save PNR. Please try again."
+                    )
+                }
             } finally {
                 coordinator.release(pnr)
-
-                _state.update {
-                    it.copy(isChecking = false)
+                updateState {
+                    it.copy(isChecking = false, checkingPnr = null)
                 }
             }
 
             if (saved) {
                 currentCoroutineContext().ensureActive()
 
-                _navigationEvents.emit(
-                    PnrNavigationEvent.OpenDetails(pnr)
+                navigationQueue.enqueue(
+                    PnrNavigationEvent.OpenDetails(pnr, requestId)
                 )
             }
         }
     }
 
-
-
+    @MainThread
     fun refreshPnr(pnr: String) {
         if (!isValidPnr(pnr)) return
-        if (!coordinator.tryAcquire(pnr)) return
-
-        _state.update {
-            it.copy(
-                refreshingPnrs = it.refreshingPnrs + pnr,
-                detailsMessage = null,
-                messagePnr = null
-            )
-        }
 
         viewModelScope.launch {
-            var message =
-                "Couldn't refresh. Your saved result is unchanged."
+            if (!coordinator.tryAcquire(pnr)) return@launch
+
+            var message: String? = null
 
             try {
-                // Exactly one user-initiated live request.
-                val result = RemotePnrChecker.check(pnr)
-
-                val updated = withContext(Dispatchers.IO) {
-                    if (repository.getByPnr(pnr) != null) {
-                        repository.save(result)
-                        true
-                    } else {
-                        false
-                    }
+                updateState {
+                    it.withoutOperationMessage(pnr).copy(
+                        refreshingPnrs = it.refreshingPnrs + pnr
+                    )
                 }
 
-                message = if (updated) {
+                val result = lookup(pnr)
+                currentCoroutineContext().ensureActive()
+
+                message = if (repository.saveIfExists(result)) {
                     "PNR status updated successfully."
                 } else {
                     "Saved PNR was not found."
                 }
-
             } catch (e: CancellationException) {
                 throw e
-
             } catch (e: PnrCheckException) {
                 message = e.message
-
-            } catch (e: Exception) {
-                message =
-                    "Unable to refresh. Your saved result is unchanged."
-
+            } catch (_: Exception) {
+                message = "Unable to refresh. Your saved result is unchanged."
             } finally {
                 coordinator.release(pnr)
 
-                _state.update {
-                    it.copy(
-                        refreshingPnrs = it.refreshingPnrs - pnr,
-                        detailsMessage = message,
-                        messagePnr = pnr
+                updateState { state ->
+                    val idle = state.copy(
+                        refreshingPnrs = state.refreshingPnrs - pnr
                     )
+
+                    val text = message
+
+                    if (text == null) {
+                        idle
+                    } else {
+                        idle.withOperationMessage(
+                            pnr,
+                            PnrMessageKind.REFRESH,
+                            text
+                        )
+                    }
                 }
             }
         }
     }
 
-
-    fun deletePnr(pnr: String) {
+    @MainThread
+    fun deletePnr(pnr: String, originEntryId: String? = null) {
         if (!isValidPnr(pnr)) return
-        if (!coordinator.tryAcquire(pnr)) return
-
-        _state.update {
-            it.copy(
-                deletingPnrs = it.deletingPnrs + pnr,
-                detailsMessage = null,
-                messagePnr = null
-            )
-        }
 
         viewModelScope.launch {
+            if (!coordinator.tryAcquire(pnr)) return@launch
+
             var deleted = false
+            var message: String? = null
 
             try {
-                withContext(Dispatchers.IO) {
-                    repository.delete(pnr)
+                updateState {
+                    it.withoutOperationMessage(pnr).copy(
+                        deletingPnrs = it.deletingPnrs + pnr
+                    )
                 }
 
+                repository.delete(pnr)
                 deleted = true
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                _state.update {
-                    it.copy(
-                        detailsMessage =
-                            "Unable to delete PNR. Please try again.",
-                        messagePnr = pnr
-                    )
-                }
+            } catch (_: Exception) {
+                message = "Unable to delete PNR. Please try again."
             } finally {
                 coordinator.release(pnr)
 
-                _state.update {
-                    it.copy(
-                        deletingPnrs = it.deletingPnrs - pnr
+                updateState { state ->
+                    val idle = state.copy(
+                        deletingPnrs = state.deletingPnrs - pnr
                     )
+
+                    val text = message
+
+                    if (text == null) {
+                        idle
+                    } else {
+                        idle.withOperationMessage(
+                            pnr,
+                            PnrMessageKind.DELETE,
+                            text
+                        )
+                    }
                 }
             }
 
             if (deleted) {
                 currentCoroutineContext().ensureActive()
 
-                _navigationEvents.emit(
-                    PnrNavigationEvent.ReturnAfterDelete(pnr)
+                navigationQueue.enqueue(
+                    PnrNavigationEvent.ReturnAfterDelete(pnr, originEntryId)
                 )
             }
         }

@@ -1,4 +1,5 @@
-
+import java.net.URI
+import java.net.URISyntaxException
 import java.util.Properties
 
 plugins {
@@ -27,15 +28,30 @@ val pnrBackendUrl = localConfig
         "Set pnr.api.baseUrl in the ignored root local.properties file."
     )
 
+// Validate the authority as well as the URL's textual form.
+// Do not include the actual configured URL in validation errors.
+val pnrBackendUri = try {
+    URI(pnrBackendUrl).parseServerAuthority()
+} catch (_: URISyntaxException) {
+    null
+}
+
 require(
     pnrBackendUrl.startsWith("https://") &&
             pnrBackendUrl.endsWith("/") &&
-            !pnrBackendUrl.contains("\"") &&
-            !pnrBackendUrl.contains("\\") &&
-            !pnrBackendUrl.contains("?") &&
-            !pnrBackendUrl.contains("#")
+            pnrBackendUri?.let { uri ->
+                uri.scheme == "https" &&
+                        uri.host?.isNotBlank() == true &&
+                        uri.rawAuthority?.endsWith(":") == false &&
+                        uri.rawUserInfo == null &&
+                        uri.rawQuery == null &&
+                        uri.rawFragment == null &&
+                        uri.rawPath?.endsWith("/") == true &&
+                        (uri.port == -1 || uri.port in 1..65535)
+            } == true
 ) {
-    "pnr.api.baseUrl must be a valid HTTPS base URL ending with /."
+    "pnr.api.baseUrl must be a valid HTTPS base URL ending with /, " +
+            "without credentials, query parameters or fragments."
 }
 
 // Optional GitHub repository URL.
@@ -119,6 +135,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
@@ -130,7 +147,7 @@ dependencies {
     implementation(libs.retrofit.converter.gson)
     implementation(libs.okhttp)
 
-    implementation("androidx.core:core-splashscreen:1.2.0")
+    implementation(libs.androidx.core.splashscreen)
 
     testImplementation(libs.junit)
 

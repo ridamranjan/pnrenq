@@ -1,43 +1,43 @@
-
 package com.first.pnrenq.domain.model
 
+import com.google.gson.annotations.SerializedName
 import java.time.LocalDate
 
 data class PassengerStatus(
-    val index: Int,
-    val bookingStatus: String,
-    val currentStatus: String,
-    val coach: String?,
-    val berth: String?,
-    val bookingStatusCode: String? = null,
-    val currentStatusCode: String? = null,
-    val bookingCoach: String? = null,
-    val bookingBerthNo: Int? = null,
-    val currentBerthNo: Int? = null,
-    val bookingBerthCode: String? = null,
-    val currentBerthCode: String? = null,
-    val coachPosition: Int? = null
+    @field:SerializedName("index") val index: Int,
+    @field:SerializedName("bookingStatus") val bookingStatus: String,
+    @field:SerializedName("currentStatus") val currentStatus: String,
+    @field:SerializedName("coach") val coach: String?,
+    @field:SerializedName("berth") val berth: String?,
+    @field:SerializedName("bookingStatusCode") val bookingStatusCode: String? = null,
+    @field:SerializedName("currentStatusCode") val currentStatusCode: String? = null,
+    @field:SerializedName("bookingCoach") val bookingCoach: String? = null,
+    @field:SerializedName("bookingBerthNo") val bookingBerthNo: Int? = null,
+    @field:SerializedName("currentBerthNo") val currentBerthNo: Int? = null,
+    @field:SerializedName("bookingBerthCode") val bookingBerthCode: String? = null,
+    @field:SerializedName("currentBerthCode") val currentBerthCode: String? = null,
+    @field:SerializedName("coachPosition") val coachPosition: Int? = null
 )
 
 data class PnrDetails(
-    val departureTime: String? = null,
-    val arrivalDate: String? = null,
-    val arrivalTime: String? = null,
-    val duration: String? = null,
-    val sourceStationName: String? = null,
-    val destinationStationName: String? = null,
-    val boardingPoint: String? = null,
-    val reservationUpto: String? = null,
-    val journeyClass: String? = null,
-    val quota: String? = null,
-    val distanceKm: Double? = null,
-    val bookingFare: Double? = null,
-    val ticketFare: Double? = null,
-    val bookingDate: String? = null,
-    val vikalpStatus: String? = null,
-    val ticketType: String? = null,
-    val provider: String? = null,
-    val providerTimestamp: String? = null
+    @field:SerializedName("departureTime") val departureTime: String? = null,
+    @field:SerializedName("arrivalDate") val arrivalDate: String? = null,
+    @field:SerializedName("arrivalTime") val arrivalTime: String? = null,
+    @field:SerializedName("duration") val duration: String? = null,
+    @field:SerializedName("sourceStationName") val sourceStationName: String? = null,
+    @field:SerializedName("destinationStationName") val destinationStationName: String? = null,
+    @field:SerializedName("boardingPoint") val boardingPoint: String? = null,
+    @field:SerializedName("reservationUpto") val reservationUpto: String? = null,
+    @field:SerializedName("journeyClass") val journeyClass: String? = null,
+    @field:SerializedName("quota") val quota: String? = null,
+    @field:SerializedName("distanceKm") val distanceKm: Double? = null,
+    @field:SerializedName("bookingFare") val bookingFare: Double? = null,
+    @field:SerializedName("ticketFare") val ticketFare: Double? = null,
+    @field:SerializedName("bookingDate") val bookingDate: String? = null,
+    @field:SerializedName("vikalpStatus") val vikalpStatus: String? = null,
+    @field:SerializedName("ticketType") val ticketType: String? = null,
+    @field:SerializedName("provider") val provider: String? = null,
+    @field:SerializedName("providerTimestamp") val providerTimestamp: String? = null
 )
 
 data class PnrInfo(
@@ -63,27 +63,8 @@ enum class StatusCategory {
     UNKNOWN
 }
 
-fun statusCategoryOf(status: String): StatusCategory {
-    val s = status.trim().uppercase()
-
-    return when {
-        s.startsWith("CNF") ||
-                s.startsWith("CONFIRM") ->
-            StatusCategory.CONFIRMED
-
-        s.startsWith("RAC") ->
-            StatusCategory.RAC
-
-        s.startsWith("CAN") ->
-            StatusCategory.CANCELLED
-
-        s.contains("WL") ->
-            StatusCategory.WAITING
-
-        else ->
-            StatusCategory.UNKNOWN
-    }
-}
+fun statusCategoryOf(status: String): StatusCategory =
+    parseReservation(status).code.category
 
 fun PnrInfo.coachBerthSummary(): String? {
     val first = passengers.firstOrNull {

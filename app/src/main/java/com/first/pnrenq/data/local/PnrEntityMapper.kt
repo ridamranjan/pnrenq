@@ -1,17 +1,21 @@
-
 package com.first.pnrenq.data.local
 
 import com.first.pnrenq.domain.model.PassengerStatus
 import com.first.pnrenq.domain.model.PnrDetails
 import com.first.pnrenq.domain.model.PnrInfo
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import java.time.LocalDate
+import java.time.format.DateTimeParseException
 
 private val gson = Gson()
 
 private data class ExtraSnapshot(
-    val details: PnrDetails,
-    val passengers: List<PassengerStatus>
+    @field:SerializedName("details")
+    val details: PnrDetails?,
+
+    @field:SerializedName("passengers")
+    val passengers: List<PassengerStatus>?
 )
 
 fun PnrInfo.toSavedEntity(
@@ -49,9 +53,15 @@ fun PnrInfo.toPassengerEntities(): List<PassengerEntity> =
     }
 
 fun PnrWithPassengers.toDomain(): PnrInfo {
+    val journeyDate =
+        LocalDate.parse(pnr.journeyDate)
+
     val snapshot = try {
         pnr.detailsJson?.let {
-            gson.fromJson(it, ExtraSnapshot::class.java)
+            gson.fromJson(
+                it,
+                ExtraSnapshot::class.java
+            )
         }
     } catch (_: Exception) {
         null
@@ -68,7 +78,8 @@ fun PnrWithPassengers.toDomain(): PnrInfo {
     val restoredPassengers = passengers
         .sortedBy { it.passengerIndex }
         .map { passenger ->
-            val extra = extraPassengers[passenger.passengerIndex]
+            val extra =
+                extraPassengers[passenger.passengerIndex]
 
             PassengerStatus(
                 index = passenger.passengerIndex,
@@ -91,7 +102,7 @@ fun PnrWithPassengers.toDomain(): PnrInfo {
         pnrNumber = pnr.pnrNumber,
         trainNumber = pnr.trainNumber,
         trainName = pnr.trainName,
-        journeyDate = LocalDate.parse(pnr.journeyDate),
+        journeyDate = journeyDate,
         fromStation = pnr.fromStation,
         toStation = pnr.toStation,
         bookingStatus = pnr.bookingStatus,
@@ -102,3 +113,11 @@ fun PnrWithPassengers.toDomain(): PnrInfo {
         details = snapshot?.details ?: PnrDetails()
     )
 }
+
+/** A malformed stored date must not prevent other rows from being read. */
+internal fun PnrWithPassengers.toDomainOrNull(): PnrInfo? =
+    try {
+        toDomain()
+    } catch (_: DateTimeParseException) {
+        null
+    }

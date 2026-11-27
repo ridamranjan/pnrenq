@@ -1,4 +1,3 @@
-
 package com.first.pnrenq.ui.theme
 
 import androidx.compose.foundation.BorderStroke
@@ -9,73 +8,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
-import kotlin.math.max
-import kotlin.math.min
 
-private fun contrastRatio(
-    foreground: Color,
-    background: Color
-): Float {
-    val first = foreground.luminance()
-    val second = background.luminance()
-
-    return (max(first, second) + 0.05f) /
-            (min(first, second) + 0.05f)
-}
-
-private fun safeAccentBlend(
-    base: Color,
-    accent: Color,
-    foreground: Color,
-    requestedAmount: Float
-): Color {
-    var amount = requestedAmount.coerceIn(0f, 1f)
-
-    repeat(16) {
-        val candidate = lerp(base, accent, amount)
-
-        if (contrastRatio(foreground, candidate) >= 4.5f) {
-            return candidate
-        }
-
-        amount *= 0.78f
-    }
-
-    return base
-}
-
-/**
- * Returns a solid brush in Simplified mode and a
- * matching palette gradient in Gradient mode.
- *
- * The foreground color is used for contrast checks.
- */
-@Composable
-fun pnrAccentBrush(
+/** Shared by the accent brush and text contrast reference calculation. */
+internal fun pnrAccentColors(
     baseColor: Color,
     foregroundColor: Color,
+    settings: ThemeSettings,
+    dark: Boolean,
     strength: Float = 1f
-): Brush {
-    val settings = LocalPnrVisualSettings.current
-
+): List<Color> {
     if (settings.style == AppThemeStyle.SIMPLIFIED) {
-        return Brush.linearGradient(
-            listOf(baseColor, baseColor)
-        )
+        return listOf(baseColor)
     }
-
-    val dark = isDarkAppearance(
-        mode = settings.mode,
-        systemDark = isSystemInDarkTheme()
-    )
 
     val palette = paletteColors(settings.palette)
 
@@ -96,36 +49,82 @@ fun pnrAccentBrush(
         else -> 0.27f
     } * strength.coerceIn(0f, 1.5f)
 
-    val startColor = safeAccentBlend(
-        base = baseColor,
-        accent = accent,
-        foreground = foregroundColor,
-        requestedAmount = intensity
-    )
-
-    val middleColor = safeAccentBlend(
-        base = baseColor,
-        accent = accent,
-        foreground = foregroundColor,
-        requestedAmount = intensity * 0.50f
-    )
-
-    return Brush.linearGradient(
-        colors = listOf(
-            startColor,
-            middleColor,
-            baseColor
+    fun stop(amount: Float): Color = Color(
+        safePnrGradientStop(
+            baseColor.toArgb(),
+            accent.toArgb(),
+            listOf(
+                listOf(foregroundColor.toArgb())
+            ),
+            amount.toDouble(),
+            textGradient = false,
+            backgroundOverlayFraction = 0.10
         )
+    )
+
+    return listOf(
+        stop(intensity),
+        stop(intensity * 0.50f),
+        baseColor
     )
 }
 
-/**
- * Replaces an ordinary Surface only where a
- * gradient accent is desired.
- *
- * In Simplified mode it retains the supplied
- * original solid background color.
- */
+/** Solid in Simplified mode; conservative contrast-checked stops in Gradient mode. */
+@Composable
+fun pnrAccentBrush(
+    baseColor: Color,
+    foregroundColor: Color,
+    strength: Float = 1f
+): Brush {
+    val settings = LocalPnrVisualSettings.current
+
+    val dark = isDarkAppearance(
+        settings.mode,
+        isSystemInDarkTheme()
+    )
+
+    val visual = pnrVisualKey(
+        settings,
+        dark
+    )
+
+    val scheme = MaterialTheme.colorScheme
+
+    val cache = LocalPnrThemeColorCache.current?.takeIf {
+        it.matches(scheme, visual)
+    }
+
+    val colors = remember(
+        baseColor,
+        foregroundColor,
+        strength,
+        visual,
+        cache
+    ) {
+        cache?.accentColors(
+            baseColor,
+            foregroundColor,
+            strength
+        ) ?: pnrAccentColors(
+            baseColor,
+            foregroundColor,
+            settings,
+            dark,
+            strength
+        )
+    }
+
+    // A brush belongs to this composition site, not to the shared color cache.
+    return remember(colors) {
+        if (colors.size == 1) {
+            SolidColor(colors.first())
+        } else {
+            Brush.linearGradient(colors = colors)
+        }
+    }
+}
+
+/** Replaces an ordinary Surface only where a gradient accent is desired. */
 @Composable
 fun PnrAccentSurface(
     modifier: Modifier = Modifier,

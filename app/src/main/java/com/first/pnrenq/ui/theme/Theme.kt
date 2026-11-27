@@ -1,4 +1,3 @@
-
 package com.first.pnrenq.ui.theme
 
 import androidx.compose.foundation.background
@@ -12,6 +11,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -21,7 +21,9 @@ data class PaletteColors(
     val dark: Color
 )
 
-fun paletteColors(palette: AppThemePalette): PaletteColors =
+fun paletteColors(
+    palette: AppThemePalette
+): PaletteColors =
     when (palette) {
         AppThemePalette.OCEAN ->
             PaletteColors(
@@ -136,7 +138,9 @@ private fun createLightScheme(
         onPrimary = Color.White,
 
         primaryContainer = lerp(
-            surface, primary, 0.15f
+            surface,
+            primary,
+            0.15f
         ),
         onPrimaryContainer = Color(0xFF162334),
 
@@ -144,7 +148,9 @@ private fun createLightScheme(
         onSecondary = Color.White,
 
         secondaryContainer = lerp(
-            surface, primary, 0.10f
+            surface,
+            primary,
+            0.10f
         ),
         onSecondaryContainer = Color(0xFF1D2837),
 
@@ -152,7 +158,9 @@ private fun createLightScheme(
         onTertiary = Color.White,
 
         tertiaryContainer = lerp(
-            surface, primary, 0.13f
+            surface,
+            primary,
+            0.13f
         ),
         onTertiaryContainer = Color(0xFF1D2837),
 
@@ -163,27 +171,39 @@ private fun createLightScheme(
         onSurface = foreground,
 
         surfaceVariant = lerp(
-            Color(0xFFF1F4F8), primary, 0.05f
+            Color(0xFFF1F4F8),
+            primary,
+            0.05f
         ),
         onSurfaceVariant = secondaryText,
 
         surfaceContainerLowest = surface,
         surfaceContainerLow = lerp(
-            surface, primary, 0.035f
+            surface,
+            primary,
+            0.035f
         ),
         surfaceContainer = lerp(
-            surface, primary, 0.06f
+            surface,
+            primary,
+            0.06f
         ),
         surfaceContainerHigh = lerp(
-            surface, primary, 0.09f
+            surface,
+            primary,
+            0.09f
         ),
         surfaceContainerHighest = lerp(
-            surface, primary, 0.12f
+            surface,
+            primary,
+            0.12f
         ),
 
         outline = Color(0xFF697382),
         outlineVariant = lerp(
-            Color(0xFFDCE1E8), primary, 0.08f
+            Color(0xFFDCE1E8),
+            primary,
+            0.08f
         ),
 
         inverseSurface = Color(0xFF252B35),
@@ -240,7 +260,9 @@ private fun createDarkScheme(
         onPrimary = Color(0xFF101820),
 
         primaryContainer = lerp(
-            darkBase, palette.light, 0.29f
+            darkBase,
+            palette.light,
+            0.29f
         ),
         onPrimaryContainer = Color(0xFFF7F9FF),
 
@@ -248,7 +270,9 @@ private fun createDarkScheme(
         onSecondary = Color(0xFF101820),
 
         secondaryContainer = lerp(
-            darkBase, palette.light, 0.22f
+            darkBase,
+            palette.light,
+            0.22f
         ),
         onSecondaryContainer = Color(0xFFF2F6FF),
 
@@ -256,7 +280,9 @@ private fun createDarkScheme(
         onTertiary = Color(0xFF101820),
 
         tertiaryContainer = lerp(
-            darkBase, palette.light, 0.25f
+            darkBase,
+            palette.light,
+            0.25f
         ),
         onTertiaryContainer = Color(0xFFF2F6FF),
 
@@ -314,30 +340,82 @@ private fun createDarkScheme(
     )
 }
 
+/** Pure scheme selection, shared with the contrast regression matrix. */
+internal fun pnrColorScheme(
+    settings: ThemeSettings,
+    systemDark: Boolean
+): ColorScheme {
+    val dark = isDarkAppearance(
+        settings.mode,
+        systemDark
+    )
+
+    val palette = paletteColors(settings.palette)
+
+    return if (dark) {
+        createDarkScheme(
+            settings.mode,
+            palette
+        )
+    } else {
+        createLightScheme(
+            settings.mode,
+            palette
+        )
+    }
+}
+
 @Composable
 fun PnrenqTheme(
     settings: ThemeSettings = ThemeSettings(),
     content: @Composable () -> Unit
 ) {
+    val systemDark = isSystemInDarkTheme()
+
     val dark = isDarkAppearance(
         settings.mode,
-        isSystemInDarkTheme()
+        systemDark
     )
 
-    val palette = paletteColors(settings.palette)
+    val visual = pnrVisualKey(
+        settings,
+        dark
+    )
 
-    val scheme = if (dark) {
-        createDarkScheme(settings.mode, palette)
-    } else {
-        createLightScheme(settings.mode, palette)
+    // Neither background style nor time format changes the Material color scheme.
+    val scheme = remember(
+        settings.mode,
+        settings.palette,
+        dark
+    ) {
+        pnrColorScheme(
+            settings,
+            systemDark
+        )
     }
 
     MaterialTheme(
         colorScheme = scheme,
         typography = Typography
     ) {
+        // Use the scheme actually exposed by MaterialTheme, including versions
+        // that maintain their own remembered copy.
+        val activeScheme = MaterialTheme.colorScheme
+
+        val cache = remember(
+            scheme,
+            activeScheme,
+            visual
+        ) {
+            PnrThemeColorCache(
+                activeScheme,
+                visual
+            )
+        }
+
         CompositionLocalProvider(
             LocalPnrVisualSettings provides settings,
+            LocalPnrThemeColorCache provides cache,
             LocalContentColor provides scheme.onBackground
         ) {
             Box(
