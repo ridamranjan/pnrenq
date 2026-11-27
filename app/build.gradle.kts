@@ -101,14 +101,16 @@ android {
 
     buildTypes {
         release {
+            // Establish a reliable signed release baseline before
+            // reintroducing R8 optimization.
+            //
+            // The previous package-scoped optimization configuration
+            // produced an IllegalAccessError during Compose startup.
+            //
+            // Keep optimization disabled until an optimized release
+            // has passed actual device runtime verification.
             optimization {
-                enable = true
-
-                packageScope = setOf(
-                    "androidx.**",
-                    "kotlin.**",
-                    "kotlinx.**"
-                )
+                enable = false
             }
         }
     }
